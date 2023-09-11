@@ -1,0 +1,14 @@
+commerce_gmo_linktypeplus.complete_response:
+  path: '/payment/success/order'
+  defaults: 
+    _controller: '\Drupal\commerce_gmo_linktypeplus\Controller\GmoLinkTypePlusController::responseProcessor'
+    arguments: ['@logger.factory']
+  requirements:
+    _access: 'TRUE' 
+commerce_gmo_linktypeplus.async_complete_response:
+  path: '/payment/response/save'
+  defaults: 
+    _controller: '\Drupal\commerce_gmo_linktypeplus\Controller\GmoLinkTypePlusController::responseSaver'
+    arguments: ['@logger.factory']
+  requirements:
+    _access: 'TRUE' 
