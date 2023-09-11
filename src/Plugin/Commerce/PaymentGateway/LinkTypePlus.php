@@ -6,26 +6,21 @@ use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\HttpFoundation\Request;
-// UPDATE THE ANNOTATION ID AND LABEL AND ADD APPROPRIATE PARAMS
-// HAVE CLASS NAME LINKTYPE SINCE WE ALREADY HAVE offsiteRedirect
+
 /**
- * Provides the Off-site Redirect payment gateway.
+ * Provides the Link Type Plus payment gateway using Off-site Redirect .
  *
  * @CommercePaymentGateway(
- *   id = "example_offsite_redirect",
- *   label = "Off-site redirect",
- *   display_label = "Example",
+ *   id = "link_type_plus",
+ *   label = "Link Type Plus",
+ *   display_label = "Link Type Plus",
  *   forms = {
- *     "offsite-payment" = "Drupal\commerce_gmo_linktypeplus\PluginForm\OffsiteRedirect\PaymentOffsiteForm",
- *   },
- *   payment_method_types = {"credit_card"},
- *   credit_card_types = {
- *     "amex", "dinersclub", "discover", "jcb", "maestro", "mastercard", "visa",
+ *     "offsite-payment" = "Drupal\commerce_gmo_linktypeplus\PluginForm\LinkTypePlus\LinkTypePlusOffsiteForm",
  *   },
  *   requires_billing_information = FALSE,
  * )
  */
-class OffsiteRedirect extends OffsitePaymentGatewayBase {
+class LinkTypePlus extends OffsitePaymentGatewayBase {
 
   /**
    * {@inheritdoc}
@@ -79,7 +74,7 @@ class OffsiteRedirect extends OffsitePaymentGatewayBase {
     $form['resultskipflag'] = [
       '#type' => 'radios',
       '#title' => $this->t('Should Skip The Result?'),
-      '#options' => array("1" => $this->t('Yes'), "0" => $this->t('No')),
+      '#options' => ["1" => $this->t('Yes'), "0" => $this->t('No')],
       '#default_value' => $this->configuration['resultskipflag'],
       '#required' => TRUE,
     ];
@@ -87,27 +82,27 @@ class OffsiteRedirect extends OffsitePaymentGatewayBase {
     $form['payment_methods'] = [
       '#type' => 'select',
       '#title' => $this->t('Select the payment methods'),
-      '#options' =>array(
+      '#options' => [
         'paypay' => $this->t('paypay'),
         'cvs' => $this->t('cvs'),
-        'credit' => $this->t('credit')
-      ),
-      '#default_value' =>$this->configuration['payment_methods'],
+        'credit' => $this->t('credit'),
+      ],
+      '#default_value' => $this->configuration['payment_methods'],
       '#multiple' => TRUE,
-      '#required' => TRUE
+      '#required' => TRUE,
     ];
 
     $form['template_no'] = [
       '#type' => 'select',
       '#title' => $this->t('Select the Template Number'),
-      '#options' =>array(
+      '#options' => [
         '1' => $this->t('1'),
         '2' => $this->t('2'),
-        '3' => $this->t('3')
-      ),
-      '#default_value' =>$this->configuration['template_no'],
+        '3' => $this->t('3'),
+      ],
+      '#default_value' => $this->configuration['template_no'],
       '#multiple' => FALSE,
-      '#required' => TRUE
+      '#required' => TRUE,
     ];
 
     return $form;
@@ -131,31 +126,28 @@ class OffsiteRedirect extends OffsitePaymentGatewayBase {
   }
 
   /**
-   * {@inheritdoc}
+   * Processes the "return" request.
+   *
+   * This method should only be concerned with creating/completing payments,
+   * the parent order does not need to be touched. The order state is updated
+   * automatically when the order is paid in full, or manually by the
+   * merchant (via the admin UI).
    */
   public function onReturn(OrderInterface $order, Request $request) {
     // @todo Add examples of request validation.
     // Note: Since requires_billing_information is FALSE, the order is
     // not guaranteed to have a billing profile. Confirm that
     // $order->getBillingProfile() is not NULL before trying to use it.
-    
-    // WE CAN REMOVE THIS , SINCE V HANDLE IT IN SEPARATE CONTROLLER
-    $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
-    $payment = $payment_storage->create([
-      'state' => 'completed',
-      'amount' => $order->getBalance(),
-      'payment_gateway' => $this->parentEntity->id(),
-      'order_id' => $order->id(),
-      'remote_id' => $request->query->get('txn_id'),
-      'remote_state' => $request->query->get('payment_status'),
-    ]);
-    $payment->save();
   }
 
-
+  /**
+   * Processes the "cancel" request.
+   *
+   * Allows the payment gateway to clean up any data added to the $order, set
+   * a message for the customer.
+   */
   public function onCancel(OrderInterface $order, Request $request) {
     $this->onReturn($order, $request);
   }
-
 
 }

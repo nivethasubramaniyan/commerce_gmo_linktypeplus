@@ -2,13 +2,13 @@
 
 namespace Drupal\commerce_gmo_linktypeplus\Controller;
 
+use Drupal\commerce_gmo_linktypeplus\ResponseData;
+use Drupal\commerce_order\Entity\Order;
+use Drupal\Component\Serialization\Json;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\commerce_gmo_linktypeplus\ResponseData;
-use Drupal\commerce_order\Entity\Order;
-use Drupal\Component\Serialization\Json;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
 /**
  * GMO LinkType Plus Controller process the response of the LinkType integrate with our commerce_payment.
  */
-class GmoLinkTypePlusController extends ControllerBase implements ContainerInjectionInterface{
+class GmoLinkTypePlusController extends ControllerBase implements ContainerInjectionInterface {
 
   /**
    * Var used to track the payment status .
@@ -43,7 +43,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   /**
    * GmoLinkTypePlusController constructor.
    *
-   * @param LoggerChannelFactoryInterface $loggerFactory
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    *   Logger .
    */
   public function __construct(LoggerChannelFactoryInterface $loggerFactory) {
@@ -74,7 +74,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
       $responseObj = new ResponseData($data);
 
-      $updateLinkTypePayment = $this->updateLinkTypePaymentStatus(
+      $this->updateLinkTypePaymentStatus(
         $responseObj->orderId,
         $responseObj->paymentMethod,
         $responseObj->status,
@@ -108,13 +108,13 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $order = Order::load($order_id);
       $payment_storage = \Drupal::entityTypeManager()->getStorage('commerce_payment');
       $paymentGateway = $order->get('payment_gateway')->entity->id();
-      $state = $order->get('state')->value;
+      // $state = $order->get('state')->value;
       $total_price = $order->getTotalprice()->getNumber();
       $currency = $order->getTotalprice()->getCurrencyCode();
       $payment = $payment_storage->loadByProperties([
         'order_id' => $order_id,
       ]);
-      $paymentStatus = $this->statusMapper($linkTypeState);
+      $this->statusMapper($linkTypeState);
       if ($payment) {
         $payment = array_shift($payment);
         $payment->setState($this->defaultPaymentStatus);
@@ -124,7 +124,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       else {
         $payment = $payment_storage->create([
           'state' => $this->defaultPaymentStatus,
-        // Should be made configurable.
+          // Should be made configurable.
           'payment_gateway' => $paymentGateway,
           'remote_id' => $remote_id,
           'amount' => [
@@ -240,7 +240,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $data = $request->request->all();
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
       $responseObj = new ResponseData($data);
-      $updateLinkTypePayment = $this->updateLinkTypePaymentStatus(
+      $this->updateLinkTypePaymentStatus(
         $responseObj->orderId,
         $responseObj->paymentMethod,
         $responseObj->status,
