@@ -3,4 +3,4 @@ services:
     class: Drupal\commerce_gmo_linktypeplus\EventSubscriber\OrderStatusChangeSubscriber
     tags:
       - { name: event_subscriber }
-    arguments: ['@entity_type.manager', '@event_dispatcher']
+    arguments: ['@entity_type.manager', '@event_dispatcher', '@messenger']

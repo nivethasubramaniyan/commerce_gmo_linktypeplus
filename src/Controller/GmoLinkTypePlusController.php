@@ -14,6 +14,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Drupal\commerce_gmo_linktypeplus\Event\OrderStatusChangeEvent;
+use \Drupal\Core\Messenger\MessengerInterface;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * GMO LinkType Plus Controller process the response of the LinkType integrate with our commerce_payment.
@@ -26,6 +28,13 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    * @var defaultPaymentStatus
    */
   public $defaultPaymentStatus = 'new';
+
+  /**
+   * The Messenger service.
+   *
+   * @var \Drupal\Core\Messenger\MessengerInterface
+   */
+  protected $messenger;
 
   /**
    * Logger Factory.
@@ -56,9 +65,10 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    *   Logger .
    */
-  public function __construct(LoggerChannelFactoryInterface $loggerFactory, EventDispatcherInterface $eventDispatcher) {
+  public function __construct(LoggerChannelFactoryInterface $loggerFactory, EventDispatcherInterface $eventDispatcher, MessengerInterface $messenger) {
     $this->loggerFactory = $loggerFactory->get('commerce_gmo_linktypeplus');
     $this->eventDispatcher = $eventDispatcher;
+    $this->messenger = $messenger;
   }
 
   /**
@@ -67,7 +77,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('logger.factory'),
-      $container->get('event_dispatcher')
+      $container->get('event_dispatcher'),
+      $container->get('messenger')
     );
   }
 
@@ -81,19 +92,50 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       if (!isset($hashedData)) {
         throw new \Exception("Error in processing");
       }
-      $resultData = $this->preProcessingResult($hashedData);
-      $data = array_merge(array_shift($resultData), array_pop($resultData));
+      $stashedData = $resultData = $this->preProcessingResult($hashedData);
+      if(array_shift($resultData)['Result'] !== 'PAYSUCCESS' ){
+        // Once array_shift or array_pop is done, we can not reuse that
+        // array :: Workaround? array_slice
+        $data = array_shift($stashedData);
+      }else{
+        // Once array_shift or array_pop is done, we can not reuse that
+        // array :: Workaround? array_slice
+        $data = array_merge(array_shift($stashedData), array_pop($stashedData));
+      }
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
       $responseObj = new ResponseData($data);
-
-      $this->updateLinkTypePaymentStatus(
-        $responseObj->orderId,
-        $responseObj->paymentMethod,
-        $responseObj->status,
-        $responseObj->remoteId,
-        $data,
-        TRUE
-      );
+      //Decide which page need to redirect to
+        $orderId = $responseObj->orderId;
+        $linkTypeState = $responseObj->status;
+        switch ($responseObj->status) {
+          case 'PAYSTART':
+            $this->updateEventSubscriber($orderId, $linkTypeState);
+            //Return back from payment screen
+            $this->messenger->addWarning('Important: Please complete the payment');
+            $redirect = new RedirectResponse('/checkout/' . $responseObj->orderId . '/review');
+            $redirect->send();
+            break;
+          case 'ERROR':
+            $this->updateEventSubscriber($orderId, $linkTypeState);
+            //payment failure
+            $this->messenger->addError('Payment failed');
+            $redirect = new RedirectResponse('/order-fail');
+            $redirect->send();
+            break;
+          case 'PAYSUCCESS':
+            $this->updateEventSubscriber($orderId, $linkTypeState);
+            //payment success
+            $this->updateLinkTypePaymentStatus(
+              $responseObj->orderId,
+              $responseObj->paymentMethod,
+              $responseObj->status,
+              $responseObj->remoteId,
+              $data,
+              TRUE
+            );
+          default:
+            break;
+        }
       return new JsonResponse(0);
     }
     catch (\Exception $e) {
@@ -158,7 +200,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $order->save();
 
       if ($success_page) {
-        $this->updateEventSubscriber($order_id, $linkTypeState);
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
         $redirect->send();
       }
@@ -291,8 +332,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    public function updateEventSubscriber($order_id, $status){
       // TODO: Implement the logic to passthrough an event subscriber here
       // Instead of mapping the whole status
-      // Extract relevant information from the payload (e.g., order ID and new status).
-      // $status = $this->defaultPaymentStatus;
       // Dispatch the custom event.
       $event = new OrderStatusChangeEvent($order_id, $status);
       $this->eventDispatcher->dispatch(OrderStatusChangeEvent::EVENT_NAME, $event);
