@@ -83,9 +83,24 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#type' => 'select',
       '#title' => $this->t('Select the payment methods'),
       '#options' => [
+        'cvs' => $this->t('convenience stores'),
+        'credit' => $this->t('credit card'),
+        'payeasy' => $this->t('Pay-easy'),
+        'docomo' => $this->t('d payment'),
+        'au' => $this->t('au easy payment'),
+        'sb' => $this->t('Softbank lump sum payment'),
+        'epospay' => $this->t('Epos easy payment'),
+        'dcc' => $this->t('Multicurrency credit card payment (DCC)'),
+        'linepay' => $this->t('LINE Pay payment'),
+        'famipay' => $this->t('FamiPay payment'),
+        'merpay' => $this->t('Merpay payment'),
+        'rakutenid' => $this->t('Rakuten pay'),
+        'rakutenpayv2' => $this->t('Rakuten Pay V2'),
         'paypay' => $this->t('paypay'),
-        'cvs' => $this->t('cvs'),
-        'credit' => $this->t('credit'),
+        // 'virtual account' => $this->t('Bank transfer (virtual account)'),
+        'aupay' => $this->t('au PAY (online payment)'),
+        'ganb' => $this->t('Bank transfer (virtual account Aozora)'),
+        // 'union pay' => $this->t('Net Union Pay'),
       ],
       '#default_value' => $this->configuration['payment_methods'],
       '#multiple' => TRUE,
@@ -99,10 +114,76 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
         '1' => $this->t('1'),
         '2' => $this->t('2'),
         '3' => $this->t('3'),
+        '4' => $this->t('4'),
+        '5' => $this->t('5'),
       ],
       '#default_value' => $this->configuration['template_no'],
+      '#description' => $this->t('Please enter the template type that
+      will display on payment screen. please refer: <a href="https://docs.mul-pay.jp/linkplus/payment/common">https://docs.mul-pay.jp/linkplus/payment/common</a> for more'),
       '#multiple' => FALSE,
       '#required' => TRUE,
+    ];
+
+    $form['template_id'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Select the Template ID'),
+      '#options' => [
+        'designA' => $this->t('designA'),
+        'designB' => $this->t('designB'),
+        'designC' => $this->t('designC'),
+        'designD' => $this->t('designD'),
+      ],
+      '#default_value' => $this->configuration['template_id'],
+      '#description' => $this->t('Please enter the template design that
+        will display on payment screen. please refer: <a href="https://docs.mul-pay.jp/linkplus/payment/common">https://docs.mul-pay.jp/linkplus/payment/common</a> for more'),
+      '#multiple' => FALSE,
+      '#required' => TRUE,
+    ];
+
+    $form['color_pattern'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Select the Color Pattern'),
+      '#options' => [
+        'blue_01' => $this->t('blue_01'),
+        'bluegray_01' => $this->t('bluegray_01'),
+        'skyblue_01' => $this->t('skyblue_01'),
+        'pink_01' => $this->t('pink_01'),
+        'yellow_01' => $this->t('yellow_01'),
+        'black_01' => $this->t('black_01'),
+        'nature_01' => $this->t('nature_01'),
+        'greengray_01' => $this->t('greengray_01'),
+      ],
+      '#default_value' => $this->configuration['color_pattern'],
+      '#description' => $this->t('Please enter the color pattern that
+        will display on payment screen. please refer: <a href="https://docs.mul-pay.jp/linkplus/payment/common">https://docs.mul-pay.jp/linkplus/payment/common</a> for more'),
+      '#multiple' => FALSE,
+      '#required' => TRUE,
+    ];
+
+    $form['cancel_url'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Cancel URL'),
+      '#default_value' => $this->configuration['cancel_url'],
+      '#required' => TRUE,
+      '#description' => $this->t('Cancellation URL that will callback 
+      when the user cancels the payment'),
+    ];
+
+    $form['return_url'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Return URL'),
+      '#default_value' => $this->configuration['return_url'],
+      '#required' => TRUE,
+      '#description' => $this->t('Link type This is the destination URL when pressing 
+        the "Return to site" button'),
+    ];
+
+    $form['logo_url'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Logo URL'),
+      '#default_value' => $this->configuration['logo_url'],
+      '#required' => TRUE,
+      '#description' => $this->t('URL of the logo that will display on payment screen'),
     ];
 
     return $form;
@@ -122,6 +203,11 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       $this->configuration['resultskipflag'] = $values['resultskipflag'];
       $this->configuration['payment_methods'] = $values['payment_methods'];
       $this->configuration['template_no'] = $values['template_no'];
+      $this->configuration['template_id'] = $values['template_id'];
+      $this->configuration['color_pattern'] = $values['color_pattern'];
+      $this->configuration['cancel_url'] = $values['cancel_url'];
+      $this->configuration['return_url'] = $values['return_url'];
+      $this->configuration['logo_url'] = $values['logo_url'];
     }
   }
 
