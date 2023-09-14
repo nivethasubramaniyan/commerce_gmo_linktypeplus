@@ -12,8 +12,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Drupal\commerce_gmo_linktypeplus\Event\OrderStatusChangeEvent;
 
 /**
  * GMO LinkType Plus Controller process the response of the LinkType integrate with our commerce_payment.
@@ -43,22 +41,13 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   protected $currentRequest;
 
   /**
-   * The event dispatcher.
-   *
-   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
-   */
-  protected $eventDispatcher;
-
-
-  /**
    * GmoLinkTypePlusController constructor.
    *
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    *   Logger .
    */
-  public function __construct(LoggerChannelFactoryInterface $loggerFactory, EventDispatcherInterface $eventDispatcher) {
+  public function __construct(LoggerChannelFactoryInterface $loggerFactory) {
     $this->loggerFactory = $loggerFactory->get('commerce_gmo_linktypeplus');
-    $this->eventDispatcher = $eventDispatcher;
   }
 
   /**
@@ -66,8 +55,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('logger.factory'),
-      $container->get('event_dispatcher')
+      $container->get('logger.factory')
     );
   }
 
@@ -126,8 +114,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $payment = $payment_storage->loadByProperties([
         'order_id' => $order_id,
       ]);
-      // The status mapper may have to replace
-      // with event subscriber
       $this->statusMapper($linkTypeState);
       if ($payment) {
         $payment = array_shift($payment);
@@ -158,7 +144,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $order->save();
 
       if ($success_page) {
-        $this->updateEventSubscriber($order_id, $linkTypeState);
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
         $redirect->send();
       }
@@ -190,14 +175,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
 
       case 'PAYSUCCESS':
         $this->defaultPaymentStatus = 'Completed';
-        break;
-
-      case 'PAYFAIL':
-        $this->defaultPaymentStatus = 'Failed';
-        break;
-
-      case 'CANCEL':
-        $this->defaultPaymentStatus = 'Cancelled';
         break;
 
       case 'EXPIRED':
@@ -279,22 +256,4 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     return new JsonResponse(1);
   }
 
-  /**
-   * Call the EventSuscriber to update/ log the status
-   * 
-   * @param $order_id
-   *  The order id
-   * @param $status 
-   *  Status recieved from LTP
-   * 
-   */
-   public function updateEventSubscriber($order_id, $status){
-      // TODO: Implement the logic to passthrough an event subscriber here
-      // Instead of mapping the whole status
-      // Extract relevant information from the payload (e.g., order ID and new status).
-      // $status = $this->defaultPaymentStatus;
-      // Dispatch the custom event.
-      $event = new OrderStatusChangeEvent($order_id, $status);
-      $this->eventDispatcher->dispatch(OrderStatusChangeEvent::EVENT_NAME, $event);
-   }
 }
