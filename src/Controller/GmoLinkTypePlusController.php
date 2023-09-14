@@ -12,6 +12,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Drupal\commerce_gmo_linktypeplus\Event\LinkTypePlusEvent;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+
 
 /**
  * GMO LinkType Plus Controller process the response of the LinkType integrate with our commerce_payment.
@@ -41,13 +44,21 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   protected $currentRequest;
 
   /**
+   * The event dispatcher.
+   *
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
+   */
+  protected $eventDispatcher;
+
+  /**
    * GmoLinkTypePlusController constructor.
    *
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    *   Logger .
    */
-  public function __construct(LoggerChannelFactoryInterface $loggerFactory) {
+  public function __construct(LoggerChannelFactoryInterface $loggerFactory, EventDispatcherInterface $eventDispatcher) {
     $this->loggerFactory = $loggerFactory->get('commerce_gmo_linktypeplus');
+    $this->eventDispatcher = $eventDispatcher;
   }
 
   /**
@@ -55,7 +66,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('logger.factory')
+      $container->get('logger.factory'),
+      $container->get('event_dispatcher')
     );
   }
 
@@ -237,23 +249,71 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    */
   public function responseSaver(Request $request) {
     try {
+      $hashedData = $request->request->get('result');
+      $resultData = $this->preProcessingResult($hashedData);
+      $hashedDataMod = array_shift($resultData);
+      $responseObj = new ResponseData($hashedDataMod);
+
       $data = $request->request->all();
-      $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
-      $responseObj = new ResponseData($data);
-      $this->updateLinkTypePaymentStatus(
-        $responseObj->orderId,
-        $responseObj->paymentMethod,
-        $responseObj->status,
-        $responseObj->remoteId,
-        $data,
-        FALSE
+
+      // Simulate the data for now
+      $sampleData = Array(
+          'ShopID' => "tshop00061625",
+          'ShopPass' => "g2d7w1dt",
+          'AccessID' => "8d743151e86a61d62b3f7433ffcc3b57",
+          'AccessPass' => "7faf5fda072798a9ee16e4ca4d46af90",
+          'OrderID' => "70-tt7",
+          'Status' => "AUTH",
+          'JobCd' => "AUTH",
+          'Amount' => "190",
+          'Tax' => "0",
+          'RakutenChargeID' => "ch_5BUXSNPZWSS",
+          'TranDate' => "20230914140044",
+          'ErrCode' => "",
+          'ErrInfo' => "",
+          'PayType' => 50,
+          'RakutenSubscriptionType' => "",
+          'RakutenSubscriptionID' => "",
+          'RakutenSettlementSubscriptionID' => "",
+          'RakutenSubscriptionCurrentStatus' => "",
+          'RakutenSubscriptionStartDate' => "",
       );
+      
+      $this->loggerFactory->notice('<pre><code>' . print_r($hashedDataMod, TRUE) . '</code></pre>');
+      //Update the order status in Drupal
+      if($this->updateEventSubscriber($sampleData)){
+         $this->updateLinkTypePaymentStatus(
+            $responseObj->orderId,
+            $responseObj->paymentMethod,
+            $responseObj->status,
+            $responseObj->remoteId,
+            $hashedDataMod,
+            TRUE
+        );
+      }
+      
       return new JsonResponse(0);
     }
     catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
     }
     return new JsonResponse(1);
+  }
+
+  /**
+   * Call the EventSuscriber to update/ log the status.
+   *
+   * @param string $order_id
+   *   The order id.
+   * @param string $status
+   *   Status recieved from GMO.
+   */
+  public function updateEventSubscriber($data) {
+    // @todo Implement the logic to passthrough an event subscriber here
+    // Instead of mapping the whole status
+    // Dispatch the custom event.
+    $event = new LinkTypePlusEvent($data);
+    return $this->eventDispatcher->dispatch(LinkTypePlusEvent::EVENT_NAME, $event);
   }
 
 }
