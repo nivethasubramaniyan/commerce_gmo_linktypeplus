@@ -59,6 +59,12 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $resultskipflag = $configuration['resultskipflag'];
     $payment_methods = $configuration['payment_methods'];
     $template_no = $configuration['template_no'];
+    $template_id = $configuration['template_id'];
+    $color_pattern = $configuration['color_pattern'];
+    $cancel_url = $configuration['cancel_url'];
+    $return_url = $configuration['return_url'];
+    $logo_url = $configuration['logo_url'];
+
     $this->host = $host;
     $this->credentials = [
       'ShopID' => $shop_id,
@@ -88,6 +94,11 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
         'resultskipflag' => $resultskipflag,
         'pay_methods' => array_values($payment_methods),
         'template_no' => $template_no,
+        'template_id' => $template_id,
+        'color_pattern' => $color_pattern,
+        'cancel_url' => $cancel_url,
+        'return_url' => $return_url,
+        'logo_url' => $logo_url,
       ];
 
       $redirectUrl = $this->getRedirectUrl($order, $configPayload);
@@ -127,6 +138,11 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $callBackUrl    = $callBackUrlObj->toString();
     $resultskipflag = $configPayload['resultskipflag'];
     $pay_methods    = $configPayload['pay_methods'];
+    $cancel_url = $configPayload['cancel_url'];
+    $return_url = $configPayload['return_url'];
+    $logo_url = $configPayload['logo_url'];
+    $color_pattern = $configPayload['color_pattern'];
+    $template_id = $configPayload['template_id'];
 
     array_push($this->credentials, [
       'TemplateNo' => $configPayload['template_no'],
@@ -137,11 +153,14 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       'OrderID' => "$orderId",
       'Amount'  => "$amount",
       'Overview' => 'SampleOverview',
-      'RetUrl' => $callBackUrl,
       'CompleteUrl' => $callBackUrl,
-      'CancelUrl' => $callBackUrl,
       "PayMethods" => $pay_methods,
       "ResultSkipFlag" => "$resultskipflag",
+      'CancelUrl' => "$cancel_url",
+      'RetUrl' => "$return_url",
+      "LogoUrl" => "$logo_url",
+      "ColorPattern" => "$color_pattern",
+      "TemplateID" => "$template_id",
     ];
     $payload['geturlparam'] = $this->credentials;
     return $this->doCall('payment/GetLinkplusUrlPayment.json', $payload);
