@@ -1,0 +1,27 @@
+order_fulfillment:
+  id: order_fulfillment
+  group: commerce_payment
+  type: order
+  label: 'Order Fulfillment'
+  states:
+    draft:
+      label: 'Draft'
+    fulfillment:
+      label: 'Fulfillment'
+    completed:
+      label: 'Completed'
+    canceled:
+      label: 'Canceled'
+  transitions:
+    place:
+      label: 'Place order'
+      from: [draft]
+      to: fulfillment
+    fulfill:
+      label: 'Fulfill order'
+      from: [fulfillment]
+      to: completed
+    cancel:
+      label: 'Cancel order'
+      from: [draft, fulfillment]
+      to: canceled
