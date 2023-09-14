@@ -26,6 +26,8 @@ class OrderStatusChangeSubscriber implements EventSubscriberInterface {
     $orderId = $event->getOrderId();
     $transitionState = $event->getTransitionState();
 
+    \Drupal::logger('linktype_event_subscriber')->notice("Status recieved from webhook: $transitionState");
+
     if(!empty($orderId)){
         // TODO: Don't need to update the status here, we
         // just expose the Event
