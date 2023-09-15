@@ -4,15 +4,13 @@ namespace Drupal\commerce_gmo_linktypeplus\EventSubscriber;
 
 use Drupal\commerce_gmo_linktypeplus\Event\LinkTypePlusEvent;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
-
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Orderstatus change event subscriber.
  */
-class LinkTypePlusEventSubscriber implements EventSubscriberInterface
-{
+class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
 
   /**
    * The entity type manager.
@@ -36,7 +34,7 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    *   Logger .
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, LoggerChannelFactoryInterface $loggerFactory){
+  public function __construct(EntityTypeManagerInterface $entityTypeManager, LoggerChannelFactoryInterface $loggerFactory) {
     $this->entityTypeManager = $entityTypeManager;
     $this->loggerFactory = $loggerFactory->get('linktype_event_subscriber');
   }
@@ -44,34 +42,28 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface
   /**
    * {@inheritdoc}
    */
-  public static function getSubscribedEvents(){
+  public static function getSubscribedEvents() {
     return [
-      LinkTypePlusEvent::EVENT_NAME => 'onlinkTypeEvent',
+      'Credit' => 'onlinkTypeCreditCardPaymentEvent',
+      'PayPay' => 'onlinkTypePayPayEvent'
     ];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function onlinkTypeEvent(LinkTypePlusEvent $event){
+  public function onlinkTypeCreditCardPaymentEvent(LinkTypePlusEvent $event) {
     $paymentMethod = $event->getPaymentMethod();
+    $this->loggerFactory->notice("$paymentMethod payment event has been subscribed");
+    return TRUE;
+  }
 
-    switch ($paymentMethod) {
-      case 'Credit':
-        $this->loggerFactory->notice("$paymentMethod payment event has been subscribed");
-        break;
-
-      case 'PayPay':
-        $this->loggerFactory->notice("$paymentMethod payment event has been subscribed");
-        break;
-
-      case 'Rakuten pay':
-        $this->loggerFactory->notice("$paymentMethod payment event has been subscribed");
-        break;
-
-      default:
-        break;
-    }
+  /**
+   * {@inheritdoc}
+   */
+  public function onlinkTypePayPayEvent(LinkTypePlusEvent $event) {
+    $paymentMethod = $event->getPaymentMethod();
+    $this->loggerFactory->notice("$paymentMethod payment event has been subscribed");
     return TRUE;
   }
 }

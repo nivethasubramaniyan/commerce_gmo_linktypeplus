@@ -2,10 +2,9 @@
 
 namespace Drupal\commerce_gmo_linktypeplus\Event;
 
-use Symfony\Contracts\EventDispatcher\Event;
 use Drupal\commerce_gmo_linktypeplus\PaymentMethodsConstants;
 use Drupal\commerce_gmo_linktypeplus\RemoteIdConstants;
-
+use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * OrderStatusChange Custom event.
@@ -42,7 +41,7 @@ class LinkTypePlusEvent extends Event {
    * @var array
    */
 
-  public $remoteIdVaries = RemoteIdConstants :: REMOTE_IDS ;
+  public $remoteIdVaries = RemoteIdConstants :: REMOTE_IDS;
   /**
    * Remote ID .
    *
@@ -55,23 +54,26 @@ class LinkTypePlusEvent extends Event {
    * @var array
    */
   /**
- * PayType Configuration .
- *
- * @var array
- */
+   * PayType Configuration .
+   *
+   * @var array
+   */
   public $payMethod = [
     PaymentMethodsConstants::CREDIT => 'Credit',
-    PaymentMethodsConstants::PAYPAL => 'PayPay',
+    PaymentMethodsConstants::PAYPAY => 'PayPay',
     PaymentMethodsConstants::RAKUTEN_PAY => 'Rakuten pay',
+    PaymentMethodsConstants::FAMIPAY => 'Fami pay',
+    PaymentMethodsConstants::SOFTBANK => 'Soft Bank',
+    PaymentMethodsConstants::AU_PAY => 'AU Pay',
+    PaymentMethodsConstants::EPOS => 'EPOS',
+    PaymentMethodsConstants::BANK_TRANSFER => 'Bank Transfer',
   ];
 
   /**
    * Constructor.
    *
-   * @param string $orderId
-   *   The order id.
-   * @param string $status
-   *   Status recieved from GMO.
+   * @param array $data
+   *   The GMO api response data.
    */
   public function __construct(array $data) {
     $this->orderId = $data['OrderID'];
@@ -108,10 +110,8 @@ class LinkTypePlusEvent extends Event {
     return $this->paymentMethod;
   }
 
-
   /**
    * Processing remote id since the data varies based on the payment method.
-   *
    */
   public function processRemoteId($val) {
     if (is_array($val)) {
@@ -123,7 +123,6 @@ class LinkTypePlusEvent extends Event {
       return ' ';
     }
   }
-
 
   /**
    * Check payType if PayMethod is not available.
@@ -142,5 +141,5 @@ class LinkTypePlusEvent extends Event {
     $val = $val ?? ' ';
     return $val;
   }
-  
+
 }

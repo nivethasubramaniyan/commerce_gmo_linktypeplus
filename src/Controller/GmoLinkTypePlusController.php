@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_gmo_linktypeplus\Controller;
 
+use Drupal\commerce_gmo_linktypeplus\Event\LinkTypePlusEvent;
 use Drupal\commerce_gmo_linktypeplus\ResponseData;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\Component\Serialization\Json;
@@ -9,12 +10,10 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Drupal\commerce_gmo_linktypeplus\Event\LinkTypePlusEvent;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-
 
 /**
  * GMO LinkType Plus Controller process the response of the LinkType integrate with our commerce_payment.
@@ -55,6 +54,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    *
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    *   Logger .
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   *   The event dispatcher .
    */
   public function __construct(LoggerChannelFactoryInterface $loggerFactory, EventDispatcherInterface $eventDispatcher) {
     $this->loggerFactory = $loggerFactory->get('commerce_gmo_linktypeplus');
@@ -249,49 +250,35 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    */
   public function responseSaver(Request $request) {
     try {
-      $hashedData = $request->request->get('result');
-      $resultData = $this->preProcessingResult($hashedData);
-      $hashedDataMod = array_shift($resultData);
-      $responseObj = new ResponseData($hashedDataMod);
-
       $data = $request->request->all();
-
-      // Simulate the data for now
-      $sampleData = Array(
-          'ShopID' => "tshop00061625",
-          'ShopPass' => "g2d7w1dt",
-          'AccessID' => "8d743151e86a61d62b3f7433ffcc3b57",
-          'AccessPass' => "7faf5fda072798a9ee16e4ca4d46af90",
-          'OrderID' => "70-tt7",
-          'Status' => "AUTH",
-          'JobCd' => "AUTH",
-          'Amount' => "190",
-          'Tax' => "0",
-          'RakutenChargeID' => "ch_5BUXSNPZWSS",
-          'TranDate' => "20230914140044",
-          'ErrCode' => "",
-          'ErrInfo' => "",
-          'PayType' => 50,
-          'RakutenSubscriptionType' => "",
-          'RakutenSubscriptionID' => "",
-          'RakutenSettlementSubscriptionID' => "",
-          'RakutenSubscriptionCurrentStatus' => "",
-          'RakutenSubscriptionStartDate' => "",
-      );
-      
-      $this->loggerFactory->notice('<pre><code>' . print_r($hashedDataMod, TRUE) . '</code></pre>');
-      //Update the order status in Drupal
-      if($this->updateEventSubscriber($sampleData)){
-         $this->updateLinkTypePaymentStatus(
-            $responseObj->orderId,
-            $responseObj->paymentMethod,
-            $responseObj->status,
-            $responseObj->remoteId,
-            $hashedDataMod,
-            TRUE
-        );
+      // // Simulate the data for now
+      // $sampleData = Array(
+      // 'ShopID' => "tshop00061625",
+      // 'ShopPass' => "*****",
+      // 'AccessID' => "****",
+      // 'AccessPass' => "***",
+      // 'OrderID' => "70-tt7",
+      // 'Status' => "AUTH",
+      // 'JobCd' => "AUTH",
+      // 'Amount' => "190",
+      // 'Tax' => "0",
+      // 'RakutenChargeID' => "ch_5BUXSNPZWSS",
+      // 'TranDate' => "20230914140044",
+      // 'ErrCode' => "",
+      // 'ErrInfo' => "",
+      // 'PayType' => 50,
+      // 'RakutenSubscriptionType' => "",
+      // 'RakutenSubscriptionID' => "",
+      // 'RakutenSettlementSubscriptionID' => "",
+      // 'RakutenSubscriptionCurrentStatus' => "",
+      // 'RakutenSubscriptionStartDate' => "",
+      // );
+      $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
+      // Update the order status in Drupal.
+      if ($this->updateEventSubscriber($data)) {
+        $this->updatePaymentStatus($data);
       }
-      
+
       return new JsonResponse(0);
     }
     catch (\Exception $e) {
@@ -303,17 +290,65 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   /**
    * Call the EventSuscriber to update/ log the status.
    *
-   * @param string $order_id
-   *   The order id.
-   * @param string $status
-   *   Status recieved from GMO.
+   * @param array $data
+   *   The GMO api response data.
    */
   public function updateEventSubscriber($data) {
-    // @todo Implement the logic to passthrough an event subscriber here
-    // Instead of mapping the whole status
     // Dispatch the custom event.
     $event = new LinkTypePlusEvent($data);
-    return $this->eventDispatcher->dispatch(LinkTypePlusEvent::EVENT_NAME, $event);
+    $paymentMethod = $event->getPaymentMethod();
+    return $this->eventDispatcher->dispatch($paymentMethod, $event);
+  }
+
+  /**
+   * Update the status in Drupal.
+   *
+   * @param array $data
+   *   The GMO api response data.
+   */
+  public function updatePaymentStatus($data) {
+    $event = new LinkTypePlusEvent($data);
+    $order_id = $event->getOrderId();
+    $remote_id = $event->getRemoteId();
+    $linkTypeState = $event->getTransitionState();
+
+    $order = Order::load($order_id);
+    $payment_storage = \Drupal::entityTypeManager()->getStorage('commerce_payment');
+    $paymentGateway = $order->get('payment_gateway')->entity->id();
+    $total_price = $order->getTotalprice()->getNumber();
+    $currency = $order->getTotalprice()->getCurrencyCode();
+    $payment = $payment_storage->loadByProperties([
+      'order_id' => $order_id,
+    ]);
+    $this->statusMapper($linkTypeState);
+    if ($payment) {
+      $payment = array_shift($payment);
+      $payment->setState($this->defaultPaymentStatus);
+      $payment->setRemoteId($remote_id);
+      $payment->save();
+    }
+    else {
+      $payment = $payment_storage->create([
+        'state' => $this->defaultPaymentStatus,
+        'payment_gateway' => $paymentGateway,
+        'remote_id' => $remote_id,
+        'amount' => [
+          'number' => $total_price,
+          'currency_code' => $currency,
+        ],
+        'order_id' => $order_id,
+      ]);
+      $payment->save();
+    }
+    $order->unlock();
+    $order->setData($paymentGateway, $event);
+    // It should be dynamic based on the payment status.
+    if ($order->getState()->getId() != 'completed') {
+      $order->getState()->applyTransitionById('place');
+    }
+    $order->save();
+    $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
+    $redirect->send();
   }
 
 }
