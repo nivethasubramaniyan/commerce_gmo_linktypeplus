@@ -153,13 +153,9 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $callBackUrlObj = Url::fromUri('route:commerce_gmo_linktypeplus.complete_response');
     $callBackUrlObj->setAbsolute();
     $callBackUrl    = $callBackUrlObj->toString();
-    $resultskipflag = $configPayload['resultskipflag'];
     $pay_methods    = $configPayload['pay_methods'];
     $cancel_url     = $configPayload['cancel_url'];
     $return_url     = $configPayload['return_url'];
-    $logo_url       = $configPayload['logo_url'];
-    $color_pattern  = $configPayload['color_pattern'];
-    $template_id    = $configPayload['template_id'];
 
     array_push($this->credentials, [
       'TemplateNo' => $configPayload['template_no'],
@@ -172,20 +168,20 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       'Overview' => 'SampleOverview',
       'CompleteUrl' => $callBackUrl,
       "PayMethods" => $pay_methods,
-      "ResultSkipFlag" => "$resultskipflag",
+      "ResultSkipFlag" => $configPayload['resultskipflag'],
       'CancelUrl' => "$cancel_url",
       'RetUrl' => "$return_url",
-      "ShopName" => $configPayload['shop_name'],
       "ConfirmSkipFlag" => $configPayload['confirmkipflag'],
       'TranDetailShowFlag' => $configPayload['transdetailflag'],
       'NotifyMailaddress' => $configPayload['notify_mailaddress']
     ];
 
     $payload['displaysetting'] = [
-      "TemplateID" => "$template_id",
-      "ColorPattern" => "$color_pattern",
-      "LogoUrl" => "$logo_url",
-      "Lang" => $configPayload['language']
+      "TemplateID" => $configPayload['template_id'],
+      "ColorPattern" => $configPayload['color_pattern'],
+      "LogoUrl" => $configPayload['logo_url'],
+      "Lang" => $configPayload['language'],
+      "ShopName" => $configPayload['shop_name']
     ];
 
     $payload['customer'] = [
@@ -195,7 +191,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
 
     $payload['geturlparam'] = $this->credentials;
 
-    // echo json_encode($payload);exit;
     return $this->doCall('payment/GetLinkplusUrlPayment.json', $payload);
   }
 
