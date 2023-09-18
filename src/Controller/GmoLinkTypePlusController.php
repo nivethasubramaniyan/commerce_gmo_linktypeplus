@@ -218,6 +218,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     switch ($state) {
       case 'SAUTH':
       case 'AUTH':
+        $this->defaultPaymentStatus = 'Webhook Completed';
+        break;
       case 'REQSUCCESS':
       case 'AUTHPROCESS':
         $this->defaultPaymentStatus = 'authorization';
@@ -251,28 +253,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public function responseSaver(Request $request) {
     try {
       $data = $request->request->all();
-      // // Simulate the data for now
-      // $sampleData = Array(
-      // 'ShopID' => "tshop00061625",
-      // 'ShopPass' => "*****",
-      // 'AccessID' => "****",
-      // 'AccessPass' => "***",
-      // 'OrderID' => "70-tt7",
-      // 'Status' => "AUTH",
-      // 'JobCd' => "AUTH",
-      // 'Amount' => "190",
-      // 'Tax' => "0",
-      // 'RakutenChargeID' => "ch_5BUXSNPZWSS",
-      // 'TranDate' => "20230914140044",
-      // 'ErrCode' => "",
-      // 'ErrInfo' => "",
-      // 'PayType' => 50,
-      // 'RakutenSubscriptionType' => "",
-      // 'RakutenSubscriptionID' => "",
-      // 'RakutenSettlementSubscriptionID' => "",
-      // 'RakutenSubscriptionCurrentStatus' => "",
-      // 'RakutenSubscriptionStartDate' => "",
-      // );
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
       // Update the order status in Drupal.
       if ($this->updateEventSubscriber($data)) {
@@ -307,11 +287,15 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    *   The GMO api response data.
    */
   public function updatePaymentStatus($data) {
+    $this->loggerFactory->notice('<pre><code>Web Hook Data:' . print_r($data, TRUE) . '</code></pre>');
+
     $event = new LinkTypePlusEvent($data);
     $order_id = $event->getOrderId();
+    $this->loggerFactory->notice('<code>OrderID: '.$order_id.'</code>');
     $remote_id = $event->getRemoteId();
     $linkTypeState = $event->getTransitionState();
-
+    $this->webhookStatusMapper($linkTypeState);
+    $this->loggerFactory->notice('<pre><code>Status: '.$linkTypeState.'</code></pre>');
     $order = Order::load($order_id);
     $payment_storage = \Drupal::entityTypeManager()->getStorage('commerce_payment');
     $paymentGateway = $order->get('payment_gateway')->entity->id();
@@ -320,7 +304,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     $payment = $payment_storage->loadByProperties([
       'order_id' => $order_id,
     ]);
-    $this->statusMapper($linkTypeState);
+    
     if ($payment) {
       $payment = array_shift($payment);
       $payment->setState($this->defaultPaymentStatus);
@@ -347,8 +331,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $order->getState()->applyTransitionById('place');
     }
     $order->save();
-    $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
-    $redirect->send();
   }
 
 }
