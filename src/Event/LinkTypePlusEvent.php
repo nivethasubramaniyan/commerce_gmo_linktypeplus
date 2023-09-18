@@ -61,6 +61,7 @@ class LinkTypePlusEvent extends Event {
   public $payMethod = [
     PaymentMethodsConstants::CREDIT => 'Credit',
     PaymentMethodsConstants::PAYPAY => 'PayPay',
+    PaymentMethodsConstants::DOCOMOPAY => 'D Pay',
     PaymentMethodsConstants::RAKUTEN_PAY => 'Rakuten pay',
     PaymentMethodsConstants::FAMIPAY => 'Fami pay',
     PaymentMethodsConstants::SOFTBANK => 'Soft Bank',
