@@ -229,7 +229,9 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       case 'PAYSUCCESS':
         $this->defaultPaymentStatus = 'Completed';
         break;
-
+      case 'TRADING':
+          $this->defaultPaymentStatus = 'Bank Transaction Completed';
+          break;
       case 'UNPROCESSED':
       case 'AUTHENTICATED':
       case 'CAPTURE':
@@ -254,9 +256,9 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     try {
       $data = $request->request->all();
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
-      // Update the order status in Drupal.
-      if ($this->updateEventSubscriber($data)) {
-        $this->updatePaymentStatus($data);
+      // Update the order status and call event subscriber.
+      if ($this->updatePaymentStatus($data)) {
+        $this->updateEventSubscriber($data);
       }
 
       return new JsonResponse(0);
@@ -287,11 +289,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    *   The GMO api response data.
    */
   public function updatePaymentStatus($data) {
-    $this->loggerFactory->notice('<pre><code>Web Hook Data:' . print_r($data, TRUE) . '</code></pre>');
-
     $event = new LinkTypePlusEvent($data);
     $order_id = $event->getOrderId();
-    $this->loggerFactory->notice('<code>OrderID: '.$order_id.'</code>');
     $remote_id = $event->getRemoteId();
     $linkTypeState = $event->getTransitionState();
     $this->webhookStatusMapper($linkTypeState);
@@ -304,7 +303,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     $payment = $payment_storage->loadByProperties([
       'order_id' => $order_id,
     ]);
-    
+    $this->webhookStatusMapper($linkTypeState);
     if ($payment) {
       $payment = array_shift($payment);
       $payment->setState($this->defaultPaymentStatus);
@@ -330,7 +329,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     if ($order->getState()->getId() != 'completed') {
       $order->getState()->applyTransitionById('place');
     }
-    $order->save();
+    if($order->save()){
+      return TRUE;
+    }
   }
-
 }

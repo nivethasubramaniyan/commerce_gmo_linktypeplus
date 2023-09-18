@@ -71,12 +71,51 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['shop_pass'],
       '#required' => TRUE,
     ];
+
+    $form['shop_name'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Shop Name'),
+      '#default_value' => $this->configuration['shop_name'],
+      '#required' => TRUE,
+    ];
+
+    $form['notify_mailaddress'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Notify Mail address'),
+      '#default_value' => $this->configuration['notify_mailaddress'],
+      '#description' => $this->t('<b>This is the email address to which the payment completion notification email will be sent to the Merchant when the payment is completed.
+      If omitted, the payment completion notification 
+      email will not be sent.</b>'),
+    ];
+
     $form['resultskipflag'] = [
       '#type' => 'radios',
       '#title' => $this->t('Should Skip The Result?'),
       '#options' => ["1" => $this->t('Yes'), "0" => $this->t('No')],
       '#default_value' => $this->configuration['resultskipflag'],
       '#required' => TRUE,
+      '#description' => $this->t('<b>When set to ON, skip the result screen and 
+      transition to the return destination at the time of completion.</b>')
+    ];
+
+    $form['confirmkipflag'] = [
+      '#type' => 'radios',
+      '#title' => $this->t('Should Skip The Confirmation Screen?'),
+      '#options' => ["1" => $this->t('Yes'), "0" => $this->t('No')],
+      '#default_value' => $this->configuration['confirmkipflag'],
+      '#required' => TRUE,
+      '#description' => $this->t('<b>When set to ON, the confirmation screen will be skipped and the 
+      screen will transition to the next screen.</b>')
+    ];
+
+    $form['transdetailflag'] = [
+      '#type' => 'radios',
+      '#title' => $this->t('Show transaction details?'),
+      '#options' => ["1" => $this->t('Yes'), "0" => $this->t('No')],
+      '#default_value' => $this->configuration['transdetailflag'],
+      '#required' => TRUE,
+      '#description' => $this->t('<b>When set to ON, the initial display will be the expanded 
+      transaction details on the payment screen..</b>')
     ];
 
     $form['payment_methods'] = [
@@ -160,6 +199,20 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#required' => TRUE,
     ];
 
+    $form['language'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Select the language'),
+      '#options' => [
+        'ja' => $this->t('Japanese'),
+        'en' => $this->t('English'),
+        'zh' => $this->t('Simplified Chinese')
+      ],
+      '#default_value' => $this->configuration['language'],
+      '#description' => $this->t('The language (ISO639 code) to be displayed on the payment screen.'),
+      '#multiple' => FALSE,
+      '#required' => TRUE,
+    ];
+
     $form['cancel_url'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Cancel URL'),
@@ -186,6 +239,24 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#description' => $this->t('URL of the logo that will display on payment screen'),
     ];
 
+    $form['customer_name'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Customer Name'),
+      '#default_value' => $this->configuration['customer_name'],
+      '#required' => TRUE,
+      '#description' => $this->t('<b>It is used as the default value for the name field on the input screen of each payment method.the payment 
+      method list where customer information is used.</b>'),
+    ];
+
+    $form['customer_mailaddress'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Customer Mail Address'),
+      '#default_value' => $this->configuration['customer_mailaddress'],
+      '#required' => TRUE,
+      '#description' => $this->t('<b>It is used as the default value in the email address field 
+      of the input screen of each payment method.</b>'),
+    ];
+
     return $form;
   }
 
@@ -200,6 +271,15 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       $this->configuration['host'] = $values['host'];
       $this->configuration['shop_id'] = $values['shop_id'];
       $this->configuration['shop_pass'] = $values['shop_pass'];
+
+      $this->configuration['shop_name'] = $values['shop_name'];
+      $this->configuration['notify_mailaddress'] = $values['notify_mailaddress'];
+      $this->configuration['confirmkipflag'] = $values['confirmkipflag'];
+      $this->configuration['transdetailflag'] = $values['transdetailflag'];
+      $this->configuration['language'] = $values['language'];
+      $this->configuration['customer_name'] = $values['customer_name'];
+      $this->configuration['customer_mailaddress'] = $values['customer_mailaddress'];
+
       $this->configuration['resultskipflag'] = $values['resultskipflag'];
       $this->configuration['payment_methods'] = $values['payment_methods'];
       $this->configuration['template_no'] = $values['template_no'];

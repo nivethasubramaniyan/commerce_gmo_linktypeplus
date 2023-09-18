@@ -56,6 +56,15 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $host = $configuration['host'];
     $shop_id = $configuration['shop_id'];
     $shop_pass = $configuration['shop_pass'];
+
+    $shop_name = $configuration['shop_name'];
+    $notify_mailaddress = $configuration['notify_mailaddress'];
+    $confirmkipflag = $configuration['confirmkipflag'];
+    $transdetailflag = $configuration['transdetailflag'];
+    $language = $configuration['language'];
+    $customer_name = $configuration['customer_name'];
+    $customer_mailaddress = $configuration['customer_mailaddress'];
+
     $resultskipflag = $configuration['resultskipflag'];
     $payment_methods = $configuration['payment_methods'];
     $template_no = $configuration['template_no'];
@@ -99,6 +108,14 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
         'cancel_url' => $cancel_url,
         'return_url' => $return_url,
         'logo_url' => $logo_url,
+
+        'shop_name' => $shop_name,
+        'notify_mailaddress' => $notify_mailaddress,
+        'confirmkipflag' => $confirmkipflag,
+        'transdetailflag' => $transdetailflag,
+        'language' => $language,
+        'customer_name' => $customer_name,
+        'customer_mailaddress' => $customer_mailaddress,
       ];
 
       $redirectUrl = $this->getRedirectUrl($order, $configPayload);
@@ -158,11 +175,27 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       "ResultSkipFlag" => "$resultskipflag",
       'CancelUrl' => "$cancel_url",
       'RetUrl' => "$return_url",
-      "LogoUrl" => "$logo_url",
-      "ColorPattern" => "$color_pattern",
-      "TemplateID" => "$template_id",
+      "ShopName" => $configPayload['shop_name'],
+      "ConfirmSkipFlag" => $configPayload['confirmkipflag'],
+      'TranDetailShowFlag' => $configPayload['transdetailflag'],
+      'NotifyMailaddress' => $configPayload['notify_mailaddress']
     ];
+
+    $payload['displaysetting'] = [
+      "TemplateID" => "$template_id",
+      "ColorPattern" => "$color_pattern",
+      "LogoUrl" => "$logo_url",
+      "Lang" => $configPayload['language']
+    ];
+
+    $payload['customer'] = [
+      "CustomerName" => $configPayload['customer_name'],
+      "MailAddress" => $configPayload['customer_mailaddress'],
+    ];
+
     $payload['geturlparam'] = $this->credentials;
+
+    // echo json_encode($payload);exit;
     return $this->doCall('payment/GetLinkplusUrlPayment.json', $payload);
   }
 
