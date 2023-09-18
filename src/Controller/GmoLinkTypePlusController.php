@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_gmo_linktypeplus\Controller;
 
+use Drupal\commerce_gmo_linktypeplus\Event\LinkTypePlusEvent;
 use Drupal\commerce_gmo_linktypeplus\ResponseData;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\Component\Serialization\Json;
@@ -9,6 +10,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,13 +43,23 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   protected $currentRequest;
 
   /**
+   * The event dispatcher.
+   *
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
+   */
+  protected $eventDispatcher;
+
+  /**
    * GmoLinkTypePlusController constructor.
    *
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    *   Logger .
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   *   The event dispatcher .
    */
-  public function __construct(LoggerChannelFactoryInterface $loggerFactory) {
+  public function __construct(LoggerChannelFactoryInterface $loggerFactory, EventDispatcherInterface $eventDispatcher) {
     $this->loggerFactory = $loggerFactory->get('commerce_gmo_linktypeplus');
+    $this->eventDispatcher = $eventDispatcher;
   }
 
   /**
@@ -55,7 +67,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('logger.factory')
+      $container->get('logger.factory'),
+      $container->get('event_dispatcher')
     );
   }
 
@@ -238,22 +251,104 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public function responseSaver(Request $request) {
     try {
       $data = $request->request->all();
+      // // Simulate the data for now
+      // $sampleData = Array(
+      // 'ShopID' => "tshop00061625",
+      // 'ShopPass' => "*****",
+      // 'AccessID' => "****",
+      // 'AccessPass' => "***",
+      // 'OrderID' => "70-tt7",
+      // 'Status' => "AUTH",
+      // 'JobCd' => "AUTH",
+      // 'Amount' => "190",
+      // 'Tax' => "0",
+      // 'RakutenChargeID' => "ch_5BUXSNPZWSS",
+      // 'TranDate' => "20230914140044",
+      // 'ErrCode' => "",
+      // 'ErrInfo' => "",
+      // 'PayType' => 50,
+      // 'RakutenSubscriptionType' => "",
+      // 'RakutenSubscriptionID' => "",
+      // 'RakutenSettlementSubscriptionID' => "",
+      // 'RakutenSubscriptionCurrentStatus' => "",
+      // 'RakutenSubscriptionStartDate' => "",
+      // );
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
-      $responseObj = new ResponseData($data);
-      $this->updateLinkTypePaymentStatus(
-        $responseObj->orderId,
-        $responseObj->paymentMethod,
-        $responseObj->status,
-        $responseObj->remoteId,
-        $data,
-        FALSE
-      );
+      // Update the order status in Drupal.
+      if ($this->updateEventSubscriber($data)) {
+        $this->updatePaymentStatus($data);
+      }
+
       return new JsonResponse(0);
     }
     catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
     }
     return new JsonResponse(1);
+  }
+
+  /**
+   * Call the EventSuscriber to update/ log the status.
+   *
+   * @param array $data
+   *   The GMO api response data.
+   */
+  public function updateEventSubscriber($data) {
+    // Dispatch the custom event.
+    $event = new LinkTypePlusEvent($data);
+    $paymentMethod = $event->getPaymentMethod();
+    return $this->eventDispatcher->dispatch($paymentMethod, $event);
+  }
+
+  /**
+   * Update the status in Drupal.
+   *
+   * @param array $data
+   *   The GMO api response data.
+   */
+  public function updatePaymentStatus($data) {
+    $event = new LinkTypePlusEvent($data);
+    $order_id = $event->getOrderId();
+    $remote_id = $event->getRemoteId();
+    $linkTypeState = $event->getTransitionState();
+
+    $order = Order::load($order_id);
+    $payment_storage = \Drupal::entityTypeManager()->getStorage('commerce_payment');
+    $paymentGateway = $order->get('payment_gateway')->entity->id();
+    $total_price = $order->getTotalprice()->getNumber();
+    $currency = $order->getTotalprice()->getCurrencyCode();
+    $payment = $payment_storage->loadByProperties([
+      'order_id' => $order_id,
+    ]);
+    $this->statusMapper($linkTypeState);
+    if ($payment) {
+      $payment = array_shift($payment);
+      $payment->setState($this->defaultPaymentStatus);
+      $payment->setRemoteId($remote_id);
+      $payment->save();
+    }
+    else {
+      $payment = $payment_storage->create([
+        'state' => $this->defaultPaymentStatus,
+        'payment_gateway' => $paymentGateway,
+        'remote_id' => $remote_id,
+        'amount' => [
+          'number' => $total_price,
+          'currency_code' => $currency,
+        ],
+        'order_id' => $order_id,
+      ]);
+      $payment->save();
+    }
+    $order->unlock();
+    $order->setData($paymentGateway, $event);
+    // It should be dynamic based on the payment status.
+    if ($order->getState()->getId() != 'completed') {
+      $order->getState()->applyTransitionById('place');
+    }
+    $order->save();
+    $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
+    $redirect->send();
   }
 
 }

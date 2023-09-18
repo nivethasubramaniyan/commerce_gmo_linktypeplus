@@ -138,11 +138,11 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $callBackUrl    = $callBackUrlObj->toString();
     $resultskipflag = $configPayload['resultskipflag'];
     $pay_methods    = $configPayload['pay_methods'];
-    $cancel_url = $configPayload['cancel_url'];
-    $return_url = $configPayload['return_url'];
-    $logo_url = $configPayload['logo_url'];
-    $color_pattern = $configPayload['color_pattern'];
-    $template_id = $configPayload['template_id'];
+    $cancel_url     = $configPayload['cancel_url'];
+    $return_url     = $configPayload['return_url'];
+    $logo_url       = $configPayload['logo_url'];
+    $color_pattern  = $configPayload['color_pattern'];
+    $template_id    = $configPayload['template_id'];
 
     array_push($this->credentials, [
       'TemplateNo' => $configPayload['template_no'],
