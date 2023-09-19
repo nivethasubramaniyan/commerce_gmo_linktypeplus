@@ -271,7 +271,6 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       $this->configuration['host'] = $values['host'];
       $this->configuration['shop_id'] = $values['shop_id'];
       $this->configuration['shop_pass'] = $values['shop_pass'];
-
       $this->configuration['shop_name'] = $values['shop_name'];
       $this->configuration['notify_mailaddress'] = $values['notify_mailaddress'];
       $this->configuration['confirmkipflag'] = $values['confirmkipflag'];
@@ -279,7 +278,6 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       $this->configuration['language'] = $values['language'];
       $this->configuration['customer_name'] = $values['customer_name'];
       $this->configuration['customer_mailaddress'] = $values['customer_mailaddress'];
-
       $this->configuration['resultskipflag'] = $values['resultskipflag'];
       $this->configuration['payment_methods'] = $values['payment_methods'];
       $this->configuration['template_no'] = $values['template_no'];

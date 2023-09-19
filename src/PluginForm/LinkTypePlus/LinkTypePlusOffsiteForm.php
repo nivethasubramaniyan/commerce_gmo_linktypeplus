@@ -56,7 +56,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $host = $configuration['host'];
     $shop_id = $configuration['shop_id'];
     $shop_pass = $configuration['shop_pass'];
-
     $shop_name = $configuration['shop_name'];
     $notify_mailaddress = $configuration['notify_mailaddress'];
     $confirmkipflag = $configuration['confirmkipflag'];
@@ -64,7 +63,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $language = $configuration['language'];
     $customer_name = $configuration['customer_name'];
     $customer_mailaddress = $configuration['customer_mailaddress'];
-
     $resultskipflag = $configuration['resultskipflag'];
     $payment_methods = $configuration['payment_methods'];
     $template_no = $configuration['template_no'];
@@ -108,7 +106,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
         'cancel_url' => $cancel_url,
         'return_url' => $return_url,
         'logo_url' => $logo_url,
-
         'shop_name' => $shop_name,
         'notify_mailaddress' => $notify_mailaddress,
         'confirmkipflag' => $confirmkipflag,
@@ -119,6 +116,8 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       ];
 
       $redirectUrl = $this->getRedirectUrl($order, $configPayload);
+      // wait for 3 seconds OR masking the redirect loop?!
+      sleep(3);
       $form = $this->buildRedirectForm(
         $form,
         $form_state,
@@ -157,9 +156,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $cancel_url     = $configPayload['cancel_url'];
     $return_url     = $configPayload['return_url'];
 
-    array_push($this->credentials, [
-      'TemplateNo' => $configPayload['template_no'],
-    ]);
+    $this->credentials = [...$this->credentials,'TemplateNo' => $configPayload['template_no']];
 
     $payload['configid'] = $order->id();
     $payload['transaction'] = [
@@ -190,7 +187,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     ];
 
     $payload['geturlparam'] = $this->credentials;
-
     return $this->doCall('payment/GetLinkplusUrlPayment.json', $payload);
   }
 

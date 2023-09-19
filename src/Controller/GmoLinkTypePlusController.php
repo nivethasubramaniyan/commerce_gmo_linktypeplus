@@ -14,11 +14,19 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 
 /**
  * GMO LinkType Plus Controller process the response of the LinkType integrate with our commerce_payment.
  */
 class GmoLinkTypePlusController extends ControllerBase implements ContainerInjectionInterface {
+
+  /**
+   * The entity type manager service.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
 
   /**
    * Var used to track the payment status .
@@ -57,9 +65,10 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
    *   The event dispatcher .
    */
-  public function __construct(LoggerChannelFactoryInterface $loggerFactory, EventDispatcherInterface $eventDispatcher) {
+  public function __construct(LoggerChannelFactoryInterface $loggerFactory, EventDispatcherInterface $eventDispatcher, EntityTypeManagerInterface $entityTypeManager) {
     $this->loggerFactory = $loggerFactory->get('commerce_gmo_linktypeplus');
     $this->eventDispatcher = $eventDispatcher;
+    $this->entityTypeManager = $entityTypeManager;
   }
 
   /**
@@ -68,7 +77,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('logger.factory'),
-      $container->get('event_dispatcher')
+      $container->get('event_dispatcher'),
+      $container->get('entity_type.manager')
     );
   }
 
@@ -119,7 +129,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public function updateLinkTypePaymentStatus($order_id, $payment_method, $linkTypeState, $remote_id, $data, $success_page = FALSE) {
     try {
       $order = Order::load($order_id);
-      $payment_storage = \Drupal::entityTypeManager()->getStorage('commerce_payment');
+      $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
       $paymentGateway = $order->get('payment_gateway')->entity->id();
       // $state = $order->get('state')->value;
       $total_price = $order->getTotalprice()->getNumber();
@@ -157,6 +167,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $order->save();
 
       if ($success_page) {
+        \Drupal::messenger()->addStatus('Order placed successfully');
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
         $redirect->send();
       }
@@ -256,11 +267,11 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     try {
       $data = $request->request->all();
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
-      // Update the order status and call event subscriber.
-      if ($this->updatePaymentStatus($data)) {
-        $this->updateEventSubscriber($data);
-      }
-
+      // Update the status and call event subscriber 
+      // on order completion only.
+        if ($this->updatePaymentStatus($data)) {
+          $this->updateEventSubscriber($data);
+        }
       return new JsonResponse(0);
     }
     catch (\Exception $e) {
@@ -295,42 +306,44 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     $linkTypeState = $event->getTransitionState();
     $this->webhookStatusMapper($linkTypeState);
     $this->loggerFactory->notice('<pre><code>Status: '.$linkTypeState.'</code></pre>');
-    $order = Order::load($order_id);
-    $payment_storage = \Drupal::entityTypeManager()->getStorage('commerce_payment');
-    $paymentGateway = $order->get('payment_gateway')->entity->id();
-    $total_price = $order->getTotalprice()->getNumber();
-    $currency = $order->getTotalprice()->getCurrencyCode();
-    $payment = $payment_storage->loadByProperties([
-      'order_id' => $order_id,
-    ]);
-    $this->webhookStatusMapper($linkTypeState);
-    if ($payment) {
-      $payment = array_shift($payment);
-      $payment->setState($this->defaultPaymentStatus);
-      $payment->setRemoteId($remote_id);
-      $payment->save();
-    }
-    else {
-      $payment = $payment_storage->create([
-        'state' => $this->defaultPaymentStatus,
-        'payment_gateway' => $paymentGateway,
-        'remote_id' => $remote_id,
-        'amount' => [
-          'number' => $total_price,
-          'currency_code' => $currency,
-        ],
+    $this->loggerFactory->notice('<code>OrderId: '.$order_id.'</code>');
+    if($order_id && !empty($order_id)){
+      $order = Order::load($order_id);
+      $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
+      $paymentGateway = $order->get('payment_gateway')->entity->id();
+      $total_price = $order->getTotalprice()->getNumber();
+      $currency = $order->getTotalprice()->getCurrencyCode();
+      $payment = $payment_storage->loadByProperties([
         'order_id' => $order_id,
       ]);
-      $payment->save();
-    }
-    $order->unlock();
-    $order->setData($paymentGateway, $event);
-    // It should be dynamic based on the payment status.
-    if ($order->getState()->getId() != 'completed') {
-      $order->getState()->applyTransitionById('place');
-    }
-    if($order->save()){
-      return TRUE;
-    }
+      if ($payment) {
+        $payment = array_shift($payment);
+        $payment->setState($this->defaultPaymentStatus);
+        $payment->setRemoteId($remote_id);
+        $payment->save();
+      }
+      else {
+        $payment = $payment_storage->create([
+          'state' => $this->defaultPaymentStatus,
+          'payment_gateway' => $paymentGateway,
+          'remote_id' => $remote_id,
+          'amount' => [
+            'number' => $total_price,
+            'currency_code' => $currency,
+          ],
+          'order_id' => $order_id,
+        ]);
+        $payment->save();
+      }
+      $order->unlock();
+      $order->setData($paymentGateway, $event);
+      // It should be dynamic based on the payment status.
+      if ($order->getState()->getId() != 'completed') {
+        $order->getState()->applyTransitionById('place');
+      }
+      if($order->save()){
+        return TRUE;
+      }
+    }return TRUE;
   }
 }
