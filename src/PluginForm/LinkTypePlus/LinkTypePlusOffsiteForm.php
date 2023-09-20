@@ -56,6 +56,13 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $host = $configuration['host'];
     $shop_id = $configuration['shop_id'];
     $shop_pass = $configuration['shop_pass'];
+    $shop_name = $configuration['shop_name'];
+    $notify_mailaddress = $configuration['notify_mailaddress'];
+    $confirmkipflag = $configuration['confirmkipflag'];
+    $transdetailflag = $configuration['transdetailflag'];
+    $language = $configuration['language'];
+    $customer_name = $configuration['customer_name'];
+    $customer_mailaddress = $configuration['customer_mailaddress'];
     $resultskipflag = $configuration['resultskipflag'];
     $payment_methods = $configuration['payment_methods'];
     $template_no = $configuration['template_no'];
@@ -99,9 +106,18 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
         'cancel_url' => $cancel_url,
         'return_url' => $return_url,
         'logo_url' => $logo_url,
+        'shop_name' => $shop_name,
+        'notify_mailaddress' => $notify_mailaddress,
+        'confirmkipflag' => $confirmkipflag,
+        'transdetailflag' => $transdetailflag,
+        'language' => $language,
+        'customer_name' => $customer_name,
+        'customer_mailaddress' => $customer_mailaddress,
       ];
 
       $redirectUrl = $this->getRedirectUrl($order, $configPayload);
+      // wait for 3 seconds OR masking the redirect loop?!
+      sleep(3);
       $form = $this->buildRedirectForm(
         $form,
         $form_state,
@@ -136,17 +152,11 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $callBackUrlObj = Url::fromUri('route:commerce_gmo_linktypeplus.complete_response');
     $callBackUrlObj->setAbsolute();
     $callBackUrl    = $callBackUrlObj->toString();
-    $resultskipflag = $configPayload['resultskipflag'];
     $pay_methods    = $configPayload['pay_methods'];
     $cancel_url     = $configPayload['cancel_url'];
     $return_url     = $configPayload['return_url'];
-    $logo_url       = $configPayload['logo_url'];
-    $color_pattern  = $configPayload['color_pattern'];
-    $template_id    = $configPayload['template_id'];
 
-    array_push($this->credentials, [
-      'TemplateNo' => $configPayload['template_no'],
-    ]);
+    $this->credentials = [...$this->credentials,'TemplateNo' => $configPayload['template_no']];
 
     $payload['configid'] = $order->id();
     $payload['transaction'] = [
@@ -155,13 +165,27 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       'Overview' => 'SampleOverview',
       'CompleteUrl' => $callBackUrl,
       "PayMethods" => $pay_methods,
-      "ResultSkipFlag" => "$resultskipflag",
+      "ResultSkipFlag" => $configPayload['resultskipflag'],
       'CancelUrl' => "$cancel_url",
       'RetUrl' => "$return_url",
-      "LogoUrl" => "$logo_url",
-      "ColorPattern" => "$color_pattern",
-      "TemplateID" => "$template_id",
+      "ConfirmSkipFlag" => $configPayload['confirmkipflag'],
+      'TranDetailShowFlag' => $configPayload['transdetailflag'],
+      'NotifyMailaddress' => $configPayload['notify_mailaddress']
     ];
+
+    $payload['displaysetting'] = [
+      "TemplateID" => $configPayload['template_id'],
+      "ColorPattern" => $configPayload['color_pattern'],
+      "LogoUrl" => $configPayload['logo_url'],
+      "Lang" => $configPayload['language'],
+      "ShopName" => $configPayload['shop_name']
+    ];
+
+    $payload['customer'] = [
+      "CustomerName" => $configPayload['customer_name'],
+      "MailAddress" => $configPayload['customer_mailaddress'],
+    ];
+
     $payload['geturlparam'] = $this->credentials;
     return $this->doCall('payment/GetLinkplusUrlPayment.json', $payload);
   }
