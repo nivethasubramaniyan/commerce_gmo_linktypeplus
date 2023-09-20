@@ -269,6 +269,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       $values = $form_state->getValue($form['#parents']);
       $this->configuration['redirect_method'] = $values['redirect_method'];
       $this->configuration['host'] = $values['host'];
+      $this->configuration['mode'] = $values['mode'];
       $this->configuration['shop_id'] = $values['shop_id'];
       $this->configuration['shop_pass'] = $values['shop_pass'];
       $this->configuration['shop_name'] = $values['shop_name'];
