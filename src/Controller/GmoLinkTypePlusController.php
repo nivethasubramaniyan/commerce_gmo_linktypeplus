@@ -203,15 +203,15 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       // Check  heck the status and if its failure then show
       // status message
       if( $linkTypeState != 'PAYSUCCESS' ){
+        $redirect = new RedirectResponse('/checkout/' .$order_id . '/review');
+        $redirect->send();
         if($linkTypeState == 'ERROR'){
-          $this->messenger()->addError("Payment has been failed. Please check the payment details.");
+          $this->messenger()->addError("Payment has been failed. Please check the payment details.", TRUE);
         } else if($linkTypeState == 'PAYSTART'){
           $this->messenger()->addWarning("Please review the payment details again.");
         } else{
-          $this->messenger()->addWarning("Please review the payment details.");
+          $this->messenger()->addWarning("Please review the payment details.", TRUE);
         }
-        $redirect = new RedirectResponse('/checkout/' .$order_id . '/review');
-        $redirect->send();
       }else if ($success_page) {
         $order->unlock();
         $order->setData($paymentGateway, $data);
@@ -330,7 +330,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $data = $request->request->all();
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
       // Update the status and call event subscriber 
-      // on order completion only.
         if ($this->updatePaymentStatus($data)) {
           $this->updateEventSubscriber($data);
         }
@@ -420,10 +419,9 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     $referrer = $request->headers->get('referer');
     $urlParts = explode('.', $referrer);
 
-    $mode = 'test';// Hardcoded need to read from config
-    if($mode == 'test' && str_contains($urlParts[0], 'stg')){
+    if(str_contains($urlParts[0], 'stg')){
       $allowedDomain = 'https://stg.link.mul-pay.jp';
-    }else if ($mode == 'live'){
+    }else{
       $allowedDomain = 'https://link.mul-pay.jp';
     }
 
