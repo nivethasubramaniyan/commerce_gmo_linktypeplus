@@ -200,17 +200,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         ]);
         $payment->save();
       }
-      $order->unlock();
-      $order->setData($paymentGateway, $data);
-      // It should be dynamic based on the payment status.
-      if ($order->getState()->getId() != 'completed') {
-        $order->getState()->applyTransitionById('place');
-      }
-      $order->save();
-
       // Check  heck the status and if its failure then show
       // status message
-      // print_r($linkTypeState);exit;
       if( $linkTypeState != 'PAYSUCCESS' ){
         if($linkTypeState == 'ERROR'){
           $this->messenger()->addError("Payment has been failed. Please check the payment details.");
@@ -222,6 +213,12 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         $redirect = new RedirectResponse('/checkout/' .$order_id . '/review');
         $redirect->send();
       }else if ($success_page) {
+        $order->unlock();
+        $order->setData($paymentGateway, $data);
+        if ($order->getState()->getId() != 'completed') {
+          $order->getState()->applyTransitionById('place');
+        }
+        $order->save();
         $this->messenger()->addStatus('Order placed successfully');
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
         $redirect->send();
