@@ -149,7 +149,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     }
     catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
-      return new JsonResponse(1);
     }
 
   }
@@ -200,18 +199,18 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         ]);
         $payment->save();
       }
-      // Check  heck the status and if its failure then show
+      // Check the status and if its failure then show
       // status message
       if( $linkTypeState != 'PAYSUCCESS' ){
         $redirect = new RedirectResponse('/checkout/' .$order_id . '/review');
-        $redirect->send();
         if($linkTypeState == 'ERROR'){
           $this->messenger()->addError("Payment has been failed. Please check the payment details.", TRUE);
         } else if($linkTypeState == 'PAYSTART'){
-          $this->messenger()->addWarning("Please review the payment details again.");
+          $this->messenger()->addWarning("Please review the payment details again.", TRUE);
         } else{
           $this->messenger()->addWarning("Please review the payment details.", TRUE);
         }
+        $redirect->send();
       }else if ($success_page) {
         $order->unlock();
         $order->setData($paymentGateway, $data);
@@ -275,6 +274,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    * We got these status through webhook.
    *
    * It may differs for credit card, paypay etc.
+   * Please add the required status by refering the doc
    *
    * Refer: https://docs.mul-pay.jp/payment/credit/notice
    *        https://docs.mul-pay.jp/paypay/payg-notice
@@ -307,7 +307,9 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
           break;
       case 'UNPROCESSED':
       case 'AUTHENTICATED':
-      case 'CAPTURE':
+      case 'CAPTURE': 
+        $this->defaultPaymentStatus = 'Captured';
+        break;
       case 'PAYFAIL':
         $this->defaultPaymentStatus = 'authorization_expired';
         break;
@@ -398,10 +400,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       }
       $order->unlock();
       $order->setData($paymentGateway, $event);
-      // It should be dynamic based on the payment status.
-      if ($order->getState()->getId() != 'completed') {
-        $order->getState()->applyTransitionById('place');
-      }
       if($order->save()){
         return TRUE;
       }
@@ -409,7 +407,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   }
 
  /**
-  * Custom access callback on the success and Webhook processor
+  * Custom access callback on the success and Webhook processor.
+  * It will block the requests which are not coming from GMO.
   */
   public function accessCallback() {
     // Get the current request object.
