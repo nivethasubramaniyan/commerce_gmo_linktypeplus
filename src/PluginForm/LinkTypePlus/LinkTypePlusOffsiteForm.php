@@ -147,28 +147,25 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
    * @throws \ClientException
    */
   public function getRedirectUrl($order, array $configPayload) {
-    $orderId = $order->id() . '-tt' . $order->getVersion();
+    // $orderId = $order->id() . $order->getVersion();
     $amount = round((string) $order->getBalance()->getNumber());
     $callBackUrlObj = Url::fromUri('route:commerce_gmo_linktypeplus.complete_response');
     $callBackUrlObj->setAbsolute();
     $callBackUrl    = $callBackUrlObj->toString();
-    $pay_methods    = $configPayload['pay_methods'];
-    $cancel_url     = $configPayload['cancel_url'];
-    $return_url     = $configPayload['return_url'];
-
+   
     $this->credentials = [...$this->credentials,'TemplateNo' => $configPayload['template_no']];
 
     $payload['configid'] = $order->id();
     $payload['transaction'] = [
-      'OrderID' => "$orderId",
-      'Amount'  => "$amount",
+      'OrderID' => $order->id(),
+      'Amount'  => $amount,
       'Overview' => 'SampleOverview',
       'CompleteUrl' => $callBackUrl,
-      "PayMethods" => $pay_methods,
-      "ResultSkipFlag" => $configPayload['resultskipflag'],
-      'CancelUrl' => "$cancel_url",
-      'RetUrl' => "$return_url",
-      "ConfirmSkipFlag" => $configPayload['confirmkipflag'],
+      'PayMethods' => $configPayload['pay_methods'],
+      'ResultSkipFlag' => $configPayload['resultskipflag'],
+      'CancelUrl' => $configPayload['cancel_url'],
+      'RetUrl' => $configPayload['return_url'],
+      'ConfirmSkipFlag' => $configPayload['confirmkipflag'],
       'TranDetailShowFlag' => $configPayload['transdetailflag'],
       'NotifyMailaddress' => $configPayload['notify_mailaddress']
     ];
@@ -204,7 +201,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
    * @throws \Exception
    */
   protected function doCall(string $path, array $payload) {
-
     if (empty($this->credentials)) {
       throw new \Exception('Client not configured');
     }
