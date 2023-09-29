@@ -95,7 +95,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['resultskipflag'],
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, skip the result screen and 
-      transition to the return destination at the time of completion.</b>')
+      transition to the return destination at the time of completion.</b>'),
     ];
 
     $form['confirmkipflag'] = [
@@ -105,7 +105,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['confirmkipflag'],
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, the confirmation screen will be skipped and the 
-      screen will transition to the next screen.</b>')
+      screen will transition to the next screen.</b>'),
     ];
 
     $form['transdetailflag'] = [
@@ -115,7 +115,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['transdetailflag'],
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, the initial display will be the expanded 
-      transaction details on the payment screen..</b>')
+      transaction details on the payment screen..</b>'),
     ];
 
     $form['payment_methods'] = [
@@ -205,7 +205,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#options' => [
         'ja' => $this->t('Japanese'),
         'en' => $this->t('English'),
-        'zh' => $this->t('Simplified Chinese')
+        'zh' => $this->t('Simplified Chinese'),
       ],
       '#default_value' => $this->configuration['language'],
       '#description' => $this->t('The language (ISO639 code) to be displayed on the payment screen.'),

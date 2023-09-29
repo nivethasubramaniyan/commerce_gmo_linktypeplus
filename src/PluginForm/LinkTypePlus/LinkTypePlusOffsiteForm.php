@@ -116,7 +116,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       ];
 
       $redirectUrl = $this->getRedirectUrl($order, $configPayload);
-      // wait for 3 seconds OR masking the redirect loop?!
+      // Wait for 3 seconds OR masking the redirect loop?!
       sleep(3);
       $form = $this->buildRedirectForm(
         $form,
@@ -151,9 +151,9 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $amount = round((string) $order->getBalance()->getNumber());
     $callBackUrlObj = Url::fromUri('route:commerce_gmo_linktypeplus.complete_response');
     $callBackUrlObj->setAbsolute();
-    $callBackUrl    = $callBackUrlObj->toString();
-   
-    $this->credentials = [...$this->credentials,'TemplateNo' => $configPayload['template_no']];
+    $callBackUrl = $callBackUrlObj->toString();
+
+    $this->credentials = [...$this->credentials, 'TemplateNo' => $configPayload['template_no']];
 
     $payload['configid'] = $order->id();
     $payload['transaction'] = [
@@ -167,7 +167,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       'RetUrl' => $configPayload['return_url'],
       'ConfirmSkipFlag' => $configPayload['confirmkipflag'],
       'TranDetailShowFlag' => $configPayload['transdetailflag'],
-      'NotifyMailaddress' => $configPayload['notify_mailaddress']
+      'NotifyMailaddress' => $configPayload['notify_mailaddress'],
     ];
 
     $payload['displaysetting'] = [
@@ -175,7 +175,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       "ColorPattern" => $configPayload['color_pattern'],
       "LogoUrl" => $configPayload['logo_url'],
       "Lang" => $configPayload['language'],
-      "ShopName" => $configPayload['shop_name']
+      "ShopName" => $configPayload['shop_name'],
     ];
 
     $payload['customer'] = [

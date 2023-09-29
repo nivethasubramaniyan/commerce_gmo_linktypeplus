@@ -6,21 +6,20 @@ use Drupal\commerce_gmo_linktypeplus\Event\LinkTypePlusEvent;
 use Drupal\commerce_gmo_linktypeplus\ResponseData;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\Component\Serialization\Json;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\Core\Routing\Access\AccessInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Messenger\MessengerInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Routing\Access\AccessInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Drupal\Core\Routing\RouteMatchInterface;
 
 /**
  * GMO LinkType Plus Controller process the response of the LinkType integrate with our commerce_payment.
@@ -78,7 +77,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    */
   protected $configFactory;
 
-
   /**
    * GmoLinkTypePlusController constructor.
    *
@@ -89,7 +87,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    * @param \Drupal\Core\Messenger\MessengerInterface $messenger
    *   Messenger .
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *  Config factory
+   *   Config factory.
    * @param \Symfony\Component\HttpFoundation\RequestStack $requestStack
    *   The request stack.
    */
@@ -130,23 +128,25 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $second_array = array_pop($resultData);
       if (is_array($second_array) && !empty($second_array)) {
         $data = array_merge($first_array, $second_array);
-      } else {
+      }
+      else {
         $data = array_merge($first_array, []);
       }
 
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
       $responseObj = new ResponseData($data);
 
-      $this->updateLinkTypePaymentStatus(
-        $responseObj->orderId,
-        $responseObj->paymentMethod,
-        $responseObj->status,
-        $responseObj->remoteId,
-        $data,
-        TRUE
-      );
-      return new JsonResponse(0);
-    } catch (\Exception $e) {
+      $response = $this->updateLinkTypePaymentStatus(
+                    $responseObj->orderId,
+                    $responseObj->paymentMethod,
+                    $responseObj->status,
+                    $responseObj->remoteId,
+                    $data,
+                    TRUE
+                  );
+      return $response;
+    }
+    catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
     }
   }
@@ -154,8 +154,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   /**
    * Processing the hashed data in the required format.
    */
-  public function preProcessingResult($hashedData)
-  {
+  public function preProcessingResult($hashedData) {
     $decoded = base64_decode($hashedData);
     $resultData = Json::decode(explode('}}', $decoded)[0] . '}}');
     return $resultData;
@@ -169,7 +168,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $order = Order::load($order_id);
       $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
       $paymentGateway = $order->get('payment_gateway')->entity->id();
-      // $state = $order->get('state')->value;
       $total_price = $order->getTotalprice()->getNumber();
       $currency = $order->getTotalprice()->getCurrencyCode();
       $payment = $payment_storage->loadByProperties([
@@ -182,7 +180,9 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         $payment->setRemoteId($remote_id);
         $payment->setCompletedTime(\Drupal::time()->getRequestTime());
         $payment->save();
-      } else {
+      }
+      else {
+        // Create the payment only if the order is success.
         $payment = $payment_storage->create([
           'state' => $this->defaultPaymentStatus,
           // Should be made configurable.
@@ -193,34 +193,39 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
             'currency_code' => $currency,
           ],
           'order_id' => $order_id,
-          'completed' => time()
+          'completed' => time(),
         ]);
         $payment->save();
       }
       // Check the status and if its failure then show
-      // status message
+      // status message.
       if ($linkTypeState != 'PAYSUCCESS') {
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
         if ($linkTypeState == 'ERROR') {
-          $this->messenger()->addError("Payment has been failed. Please check the payment details.", TRUE);
-        } else if ($linkTypeState == 'PAYSTART') {
-          $this->messenger()->addWarning("Please review the payment details again.", TRUE);
-        } else {
-          $this->messenger()->addWarning("Please review the payment details.", TRUE);
+          $str = "Payment has been failed. Please check the payment details.";
         }
-        $redirect->send();
-      } else if ($success_page) {
+        elseif ($linkTypeState == 'PAYSTART') {
+          $str = "Please review the payment details again.";
+        }
+        else {
+          $str = "Please review the payment details.";
+        }
+        $this->messenger()->addWarning($str);
+        return $redirect;
+      }
+      elseif ($success_page) {
         $order->unlock();
         $order->setData($paymentGateway, $data);
         if ($order->getState()->getId() != 'completed') {
           $order->getState()->applyTransitionById('place');
         }
         $order->save();
-        $this->messenger()->addStatus('Order placed successfully');
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
-        $redirect->send();
+        $this->messenger()->addStatus('Order placed successfully');
+        return $redirect;
       }
-    } catch (\Exception $e) {
+    }
+    catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
     }
   }
@@ -244,12 +249,15 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       case 'REQSUCCESS':
         $this->defaultPaymentStatus = 'authorization';
         break;
+
       case 'PAYSTART':
         $this->defaultPaymentStatus = 'new';
         break;
+
       case 'ERROR':
         $this->defaultPaymentStatus = 'failed';
         break;
+
       case 'PAYSUCCESS':
         $this->defaultPaymentStatus = 'completed';
         break;
@@ -271,15 +279,12 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public function responseSaver(Request $request) {
     try {
       $data = $request->request->all();
-      $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
-      // Update the status and call event subscriber 
-      // if ($this->updatePaymentStatus($data)) {
-      //   $this->updateEventSubscriber($data);
-      // }
-      if($this->updateEventSubscriber($data)){
+      $this->loggerFactory->notice("in response saver");
+      if ($this->updateEventSubscriber($data)) {
         return new JsonResponse(0);
       }
-    } catch (\Exception $e) {
+    }
+    catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
     }
     return new JsonResponse(1);
@@ -302,27 +307,26 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    * Custom access callback on the success and Webhook processor.
    * It will block the requests which are not coming from GMO.
    */
-  public function accessCallback(){
+  public function accessCallback() {
     // Get the current request object.
     $request = $this->requestStack->getCurrentRequest();
     // Check if the request has a referrer.
     $referrer = $request->headers->get('referer');
-    $this->loggerFactory->notice("Referrer".print_r($referrer));
-    return AccessResult::allowed();//bypass for now
-
-    $urlParts = explode('.', $referrer);
-
-    if (str_contains($urlParts[0], 'stg')) {
-      $allowedDomain = 'https://stg.link.mul-pay.jp';
-    } else {
-      $allowedDomain = 'https://link.mul-pay.jp';
-    }
-
-    // Check if the referrer matches the allowed domain.
-    if (strpos($referrer, $allowedDomain) !== false) {
+    $allowedDomain = ['https://stg.link.mul-pay.jp/', 'https://link.mul-pay.jp/'];
+    if (in_array($referrer, $allowedDomain)) {
       return AccessResult::allowed();
+
     }
     return AccessResult::forbidden();
+  }
+
+  /**
+   *
+   */
+  public function recurringCreditWebhook(Request $request) {
+    $data = $request->request->all();
+    \Drupal::logger('recurringCreditWebhook')->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
+    return new JsonResponse(0);
   }
 
 }

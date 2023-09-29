@@ -13,3 +13,11 @@ commerce_gmo_linktypeplus.async_complete_response:
     arguments: ['@logger.factory', '@request_stack']
   requirements:
     _custom_access: '\Drupal\commerce_gmo_linktypeplus\Controller\GmoLinkTypePlusController::accessCallback'
+
+commerce_gmo_linktypeplus.recurring_credit_webhook:
+  path: '/reccuringcredit/response'
+  defaults: 
+    _controller: '\Drupal\commerce_gmo_linktypeplus\Controller\GmoLinkTypePlusController::recurringCreditWebhook'
+    arguments: ['@logger.factory', '@request_stack']
+  requirements:
+    _permission: 'access content'
