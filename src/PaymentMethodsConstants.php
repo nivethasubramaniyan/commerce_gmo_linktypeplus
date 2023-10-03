@@ -15,4 +15,5 @@ class PaymentMethodsConstants {
   const EPOS = 40;
   const PAYPAY = 45;
   const RAKUTEN_PAY = 50;
+
 }

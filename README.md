@@ -9,18 +9,13 @@ For a more details and documentation, please visit https://docs.mul-pay.jp/linkp
 ## Table of contents
 
 - Requirements
-- Recommended modules
 - Installation
 - Configuration
 - Maintainers
 
 ## Requirements
 
-No requirements
-
-## Recommended modules
-
-No recommended modules
+No additional requirements
 
 ## Installation
 

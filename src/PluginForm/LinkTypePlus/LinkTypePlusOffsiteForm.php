@@ -8,6 +8,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\RequestOptions;
+use \Drupal\user\Entity\User;
 
 /**
  * Manages the offsite redirection to the vendor website.
@@ -61,8 +62,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $confirmkipflag = $configuration['confirmkipflag'];
     $transdetailflag = $configuration['transdetailflag'];
     $language = $configuration['language'];
-    $customer_name = $configuration['customer_name'];
-    $customer_mailaddress = $configuration['customer_mailaddress'];
     $resultskipflag = $configuration['resultskipflag'];
     $payment_methods = $configuration['payment_methods'];
     $template_no = $configuration['template_no'];
@@ -71,6 +70,10 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $cancel_url = $configuration['cancel_url'];
     $return_url = $configuration['return_url'];
     $logo_url = $configuration['logo_url'];
+    //cvs params
+    $contact_information = $configuration['contact_information'];
+    $contact_number = $configuration['contact_number'];
+    $contact_reception_hours = $configuration['contact_reception_hours'];
 
     $this->host = $host;
     $this->credentials = [
@@ -111,12 +114,13 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
         'confirmkipflag' => $confirmkipflag,
         'transdetailflag' => $transdetailflag,
         'language' => $language,
-        'customer_name' => $customer_name,
-        'customer_mailaddress' => $customer_mailaddress,
+        'contact_information' => $contact_information,
+        'contact_number' => $contact_number,
+        'contact_reception_hours' => $contact_reception_hours,
       ];
 
       $redirectUrl = $this->getRedirectUrl($order, $configPayload);
-      // wait for 3 seconds OR masking the redirect loop?!
+      // Wait for 3 seconds OR masking the redirect loop?!
       sleep(3);
       $form = $this->buildRedirectForm(
         $form,
@@ -147,30 +151,27 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
    * @throws \ClientException
    */
   public function getRedirectUrl($order, array $configPayload) {
-    $orderId = $order->id() . '-tt' . $order->getVersion();
+    // $orderId = $order->id() . $order->getVersion();
     $amount = round((string) $order->getBalance()->getNumber());
     $callBackUrlObj = Url::fromUri('route:commerce_gmo_linktypeplus.complete_response');
     $callBackUrlObj->setAbsolute();
-    $callBackUrl    = $callBackUrlObj->toString();
-    $pay_methods    = $configPayload['pay_methods'];
-    $cancel_url     = $configPayload['cancel_url'];
-    $return_url     = $configPayload['return_url'];
+    $callBackUrl = $callBackUrlObj->toString();
 
-    $this->credentials = [...$this->credentials,'TemplateNo' => $configPayload['template_no']];
+    $this->credentials = [...$this->credentials, 'TemplateNo' => $configPayload['template_no']];
 
     $payload['configid'] = $order->id();
     $payload['transaction'] = [
-      'OrderID' => "$orderId",
-      'Amount'  => "$amount",
+      'OrderID' => $order->id(),
+      'Amount'  => $amount,
       'Overview' => 'SampleOverview',
       'CompleteUrl' => $callBackUrl,
-      "PayMethods" => $pay_methods,
-      "ResultSkipFlag" => $configPayload['resultskipflag'],
-      'CancelUrl' => "$cancel_url",
-      'RetUrl' => "$return_url",
-      "ConfirmSkipFlag" => $configPayload['confirmkipflag'],
+      'PayMethods' => $configPayload['pay_methods'],
+      'ResultSkipFlag' => $configPayload['resultskipflag'],
+      'CancelUrl' => $configPayload['cancel_url'],
+      'RetUrl' => $configPayload['return_url'],
+      'ConfirmSkipFlag' => $configPayload['confirmkipflag'],
       'TranDetailShowFlag' => $configPayload['transdetailflag'],
-      'NotifyMailaddress' => $configPayload['notify_mailaddress']
+      'NotifyMailaddress' => $configPayload['notify_mailaddress'],
     ];
 
     $payload['displaysetting'] = [
@@ -178,15 +179,32 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       "ColorPattern" => $configPayload['color_pattern'],
       "LogoUrl" => $configPayload['logo_url'],
       "Lang" => $configPayload['language'],
-      "ShopName" => $configPayload['shop_name']
+      "ShopName" => $configPayload['shop_name'],
     ];
 
-    $payload['customer'] = [
-      "CustomerName" => $configPayload['customer_name'],
-      "MailAddress" => $configPayload['customer_mailaddress'],
-    ];
+    //Get current user email
+    $uid = \Drupal::currentUser()->id();
+    $user = User::load($uid);
+    $customerName = $user->get('name')->value;
+    $customerEmail = $user->get('mail')->value;
+
+    if(isset($customerName) && isset($customerEmail)){
+      $payload['customer'] = [
+        "CustomerName" => $customerName,
+        "MailAddress" => $customerEmail
+      ];
+    }
 
     $payload['geturlparam'] = $this->credentials;
+
+    if(in_array('cvs',$configPayload['pay_methods'])){
+      $payload['cvs'] = [
+        "ReceiptsDisp11" => $configPayload['contact_information'],
+        "ReceiptsDisp12" => $configPayload['contact_number'],
+        "ReceiptsDisp13" => $configPayload['contact_reception_hours']
+      ];
+    }
+
     return $this->doCall('payment/GetLinkplusUrlPayment.json', $payload);
   }
 
@@ -204,7 +222,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
    * @throws \Exception
    */
   protected function doCall(string $path, array $payload) {
-
     if (empty($this->credentials)) {
       throw new \Exception('Client not configured');
     }

@@ -95,7 +95,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['resultskipflag'],
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, skip the result screen and 
-      transition to the return destination at the time of completion.</b>')
+      transition to the return destination at the time of completion.</b>'),
     ];
 
     $form['confirmkipflag'] = [
@@ -105,7 +105,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['confirmkipflag'],
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, the confirmation screen will be skipped and the 
-      screen will transition to the next screen.</b>')
+      screen will transition to the next screen.</b>'),
     ];
 
     $form['transdetailflag'] = [
@@ -115,7 +115,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['transdetailflag'],
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, the initial display will be the expanded 
-      transaction details on the payment screen..</b>')
+      transaction details on the payment screen..</b>'),
     ];
 
     $form['payment_methods'] = [
@@ -144,6 +144,45 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#default_value' => $this->configuration['payment_methods'],
       '#multiple' => TRUE,
       '#required' => TRUE,
+      '#attributes' => [
+        // Also add a id to the textbox.
+        'id' => 'payment_methods',
+        'name' => 'payment_methods',
+      ],
+    ];
+
+    $form['cvs'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Convenience Store Options'),
+      '#states' => [
+        // Show this textfield only if the radio 'other' is selected above.
+        'visible' => [
+          // Don't mistake :input for the type of field or for a css selector --
+          // it's a jQuery selector. 
+          // You can always use :input or any other jQuery selector here, no matter 
+          // whether your source is a select, radio or checkbox element.
+          // in case of radio buttons we can select them by thier name instead of id.
+          ':input[name="payment_methods[]"]' => ['value' => 'cvs']
+        ],
+      ]
+    );
+    $form['cvs']['contact_information'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Contact Information'),
+      '#default_value' => $this->configuration['contact_information'] ?? '',
+      '#description' => $this->t('It will be displayed on your voucher receipt when you use the Loppi Fami port.'),
+    ];
+    $form['cvs']['contact_number'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Contact Phone number'),
+      '#default_value' => $this->configuration['contact_number'] ?? '',
+      '#description' => $this->t('It will be displayed on your voucher receipt when you use the Loppi Fami port.'),
+    ];
+    $form['cvs']['contact_reception_hours'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Contact Reception Hours'),
+      '#default_value' => $this->configuration['contact_reception_hours'] ?? '',
+      '#description' => $this->t('It will be displayed on your voucher receipt when you use the Loppi Fami port. Example) 09:00-18:00'),
     ];
 
     $form['template_no'] = [
@@ -205,7 +244,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#options' => [
         'ja' => $this->t('Japanese'),
         'en' => $this->t('English'),
-        'zh' => $this->t('Simplified Chinese')
+        'zh' => $this->t('Simplified Chinese'),
       ],
       '#default_value' => $this->configuration['language'],
       '#description' => $this->t('The language (ISO639 code) to be displayed on the payment screen.'),
@@ -239,24 +278,6 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#description' => $this->t('URL of the logo that will display on payment screen'),
     ];
 
-    $form['customer_name'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Customer Name'),
-      '#default_value' => $this->configuration['customer_name'],
-      '#required' => TRUE,
-      '#description' => $this->t('<b>It is used as the default value for the name field on the input screen of each payment method.the payment 
-      method list where customer information is used.</b>'),
-    ];
-
-    $form['customer_mailaddress'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Customer Mail Address'),
-      '#default_value' => $this->configuration['customer_mailaddress'],
-      '#required' => TRUE,
-      '#description' => $this->t('<b>It is used as the default value in the email address field 
-      of the input screen of each payment method.</b>'),
-    ];
-
     return $form;
   }
 
@@ -277,8 +298,6 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       $this->configuration['confirmkipflag'] = $values['confirmkipflag'];
       $this->configuration['transdetailflag'] = $values['transdetailflag'];
       $this->configuration['language'] = $values['language'];
-      $this->configuration['customer_name'] = $values['customer_name'];
-      $this->configuration['customer_mailaddress'] = $values['customer_mailaddress'];
       $this->configuration['resultskipflag'] = $values['resultskipflag'];
       $this->configuration['payment_methods'] = $values['payment_methods'];
       $this->configuration['template_no'] = $values['template_no'];
@@ -287,6 +306,10 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       $this->configuration['cancel_url'] = $values['cancel_url'];
       $this->configuration['return_url'] = $values['return_url'];
       $this->configuration['logo_url'] = $values['logo_url'];
+      //CVS params
+      $this->configuration['contact_information'] = $values['cvs']['contact_information'];
+      $this->configuration['contact_number'] = $values['cvs']['contact_number'];
+      $this->configuration['contact_reception_hours'] = $values['cvs']['contact_reception_hours'];
     }
   }
 
