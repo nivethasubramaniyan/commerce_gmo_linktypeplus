@@ -8,6 +8,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\RequestOptions;
+use \Drupal\user\Entity\User;
 
 /**
  * Manages the offsite redirection to the vendor website.
@@ -61,8 +62,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $confirmkipflag = $configuration['confirmkipflag'];
     $transdetailflag = $configuration['transdetailflag'];
     $language = $configuration['language'];
-    $customer_name = $configuration['customer_name'];
-    $customer_mailaddress = $configuration['customer_mailaddress'];
     $resultskipflag = $configuration['resultskipflag'];
     $payment_methods = $configuration['payment_methods'];
     $template_no = $configuration['template_no'];
@@ -71,6 +70,10 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $cancel_url = $configuration['cancel_url'];
     $return_url = $configuration['return_url'];
     $logo_url = $configuration['logo_url'];
+    //cvs params
+    $contact_information = $configuration['contact_information'];
+    $contact_number = $configuration['contact_number'];
+    $contact_reception_hours = $configuration['contact_reception_hours'];
 
     $this->host = $host;
     $this->credentials = [
@@ -111,8 +114,9 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
         'confirmkipflag' => $confirmkipflag,
         'transdetailflag' => $transdetailflag,
         'language' => $language,
-        'customer_name' => $customer_name,
-        'customer_mailaddress' => $customer_mailaddress,
+        'contact_information' => $contact_information,
+        'contact_number' => $contact_number,
+        'contact_reception_hours' => $contact_reception_hours,
       ];
 
       $redirectUrl = $this->getRedirectUrl($order, $configPayload);
@@ -178,12 +182,29 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
       "ShopName" => $configPayload['shop_name'],
     ];
 
-    $payload['customer'] = [
-      "CustomerName" => $configPayload['customer_name'],
-      "MailAddress" => $configPayload['customer_mailaddress'],
-    ];
+    //Get current user email
+    $uid = \Drupal::currentUser()->id();
+    $user = User::load($uid);
+    $customerName = $user->get('name')->value;
+    $customerEmail = $user->get('mail')->value;
+
+    if(isset($customerName) && isset($customerEmail)){
+      $payload['customer'] = [
+        "CustomerName" => $customerName,
+        "MailAddress" => $customerEmail
+      ];
+    }
 
     $payload['geturlparam'] = $this->credentials;
+
+    if(in_array('cvs',$configPayload['pay_methods'])){
+      $payload['cvs'] = [
+        "ReceiptsDisp11" => $configPayload['contact_information'],
+        "ReceiptsDisp12" => $configPayload['contact_number'],
+        "ReceiptsDisp13" => $configPayload['contact_reception_hours']
+      ];
+    }
+
     return $this->doCall('payment/GetLinkplusUrlPayment.json', $payload);
   }
 
