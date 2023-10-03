@@ -152,7 +152,8 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
     ];
 
     $form['cvs'] = array(
-      '#type' => 'fieldset',
+      '#type' => 'details',
+      '#open' => TRUE,
       '#title' => t('Convenience Store Options'),
       '#states' => [
         // Show this textfield only if the radio 'other' is selected above.
@@ -164,7 +165,8 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
           // in case of radio buttons we can select them by thier name instead of id.
           ':input[name="payment_methods[]"]' => ['value' => 'cvs']
         ],
-      ]
+      ],
+      '#description' => $this->t('Convenience Store informations are taken only if the cvs payment method selected.'),
     );
     $form['cvs']['contact_information'] = [
       '#type' => 'textfield',
