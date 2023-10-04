@@ -188,12 +188,12 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $customerName = $user->get('name')->value;
     $customerEmail = $user->get('mail')->value;
 
-    // if(isset($customerName) && isset($customerEmail)){
-    //   $payload['customer'] = [
-    //     "CustomerName" => $customerName,
-    //     "MailAddress" => $customerEmail
-    //   ];
-    // }
+    if(isset($customerName) && isset($customerEmail)){
+      $payload['customer'] = [
+        "CustomerName" => $customerName,
+        "MailAddress" => $customerEmail
+      ];
+    }
 
     $this->credentials = [...$this->credentials, 
       'TemplateNo' => $configPayload['template_no'],
