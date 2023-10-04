@@ -60,6 +60,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $shop_name = $configuration['shop_name'];
     $notify_mailaddress = $configuration['notify_mailaddress'];
     $confirmkipflag = $configuration['confirmkipflag'];
+    $thanksmailsendflag = $configuration['thanksmailsendflag'];
     $transdetailflag = $configuration['transdetailflag'];
     $language = $configuration['language'];
     $resultskipflag = $configuration['resultskipflag'];
@@ -112,6 +113,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
         'shop_name' => $shop_name,
         'notify_mailaddress' => $notify_mailaddress,
         'confirmkipflag' => $confirmkipflag,
+        'thanksmailsendflag' => $thanksmailsendflag,
         'transdetailflag' => $transdetailflag,
         'language' => $language,
         'contact_information' => $contact_information,
@@ -157,8 +159,6 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $callBackUrlObj->setAbsolute();
     $callBackUrl = $callBackUrlObj->toString();
 
-    $this->credentials = [...$this->credentials, 'TemplateNo' => $configPayload['template_no']];
-
     $payload['configid'] = $order->id();
     $payload['transaction'] = [
       'OrderID' => $order->id(),
@@ -188,20 +188,27 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $customerName = $user->get('name')->value;
     $customerEmail = $user->get('mail')->value;
 
-    if(isset($customerName) && isset($customerEmail)){
-      $payload['customer'] = [
-        "CustomerName" => $customerName,
-        "MailAddress" => $customerEmail
-      ];
-    }
+    // if(isset($customerName) && isset($customerEmail)){
+    //   $payload['customer'] = [
+    //     "CustomerName" => $customerName,
+    //     "MailAddress" => $customerEmail
+    //   ];
+    // }
+
+    $this->credentials = [...$this->credentials, 
+      'TemplateNo' => $configPayload['template_no'],
+      'ThanksMailSendFlag' => $configPayload['thanksmailsendflag'],
+      "CustomerName" => $customerName,
+      "SendMailAddress" => $customerEmail
+    ];
 
     $payload['geturlparam'] = $this->credentials;
 
     if(in_array('cvs',$configPayload['pay_methods'])){
       $payload['cvs'] = [
-        "ReceiptsDisp11" => $configPayload['contact_information'],
-        "ReceiptsDisp12" => $configPayload['contact_number'],
-        "ReceiptsDisp13" => $configPayload['contact_reception_hours']
+        "ReceiptsDisp11" => $configPayload['contact_information'] ?? '',
+        "ReceiptsDisp12" => $configPayload['contact_number'] ?? '',
+        "ReceiptsDisp13" => $configPayload['contact_reception_hours'] ?? ''
       ];
     }
 
