@@ -189,6 +189,8 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $customerEmail = $user->get('mail')->value;
 
     if(isset($customerName) && isset($customerEmail)){
+      // The following setting is for the display name and email 
+      // on the convenience store payment method.
       $payload['customer'] = [
         "CustomerName" => $customerName,
         "MailAddress" => $customerEmail
@@ -196,8 +198,10 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     }
 
     $this->credentials = [...$this->credentials, 
-      'TemplateNo' => $configPayload['template_no'],
-      'ThanksMailSendFlag' => $configPayload['thanksmailsendflag'],
+      "TemplateNo" => $configPayload['template_no'],
+      "ThanksMailSendFlag" => $configPayload['thanksmailsendflag'],
+      // The following setting is for sending the thank you email 
+      // after the payment has been completed.
       "CustomerName" => $customerName,
       "SendMailAddress" => $customerEmail
     ];
