@@ -315,7 +315,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     $allowedDomain = ['https://stg.link.mul-pay.jp/', 'https://link.mul-pay.jp/'];
     if (in_array($referrer, $allowedDomain)) {
       return AccessResult::allowed();
-
     }
     return AccessResult::forbidden();
   }

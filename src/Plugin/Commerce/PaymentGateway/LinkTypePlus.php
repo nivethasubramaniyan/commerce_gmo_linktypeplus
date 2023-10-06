@@ -286,7 +286,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
 
     // We are using custom js to show and hide cvs fieldset
     // when the cvs payment method is selected as multiselect with
-    // #states :visible is not working 
+    // #states :visible is not working. for more info: https://www.drupal.org/project/drupal/issues/1149078
     $form['#attached']['library'][] = 'commerce_gmo_linktypeplus/cvs';
     return $form;
   }
