@@ -153,7 +153,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
    * @throws \ClientException
    */
   public function getRedirectUrl($order, array $configPayload) {
-    // $orderId = $order->id() . $order->getVersion();
+    $orderId = $order->id() .'-'. $order->getVersion();
     $amount = round((string) $order->getBalance()->getNumber());
     $callBackUrlObj = Url::fromUri('route:commerce_gmo_linktypeplus.complete_response');
     $callBackUrlObj->setAbsolute();
@@ -161,7 +161,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
 
     $payload['configid'] = $order->id();
     $payload['transaction'] = [
-      'OrderID' => $order->id(),
+      'OrderID' => $orderId,
       'Amount'  => $amount,
       'Overview' => 'SampleOverview',
       'CompleteUrl' => $callBackUrl,
@@ -210,6 +210,13 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
 
     if(in_array('cvs',$configPayload['pay_methods'])){
       $payload['cvs'] = [
+        "ReceiptsDisp11" => $configPayload['contact_information'] ?? '',
+        "ReceiptsDisp12" => $configPayload['contact_number'] ?? '',
+        "ReceiptsDisp13" => $configPayload['contact_reception_hours'] ?? ''
+      ];
+    }
+    if(in_array('payeasy',$configPayload['pay_methods'])){
+      $payload['payeasy'] = [
         "ReceiptsDisp11" => $configPayload['contact_information'] ?? '',
         "ReceiptsDisp12" => $configPayload['contact_number'] ?? '',
         "ReceiptsDisp13" => $configPayload['contact_reception_hours'] ?? ''

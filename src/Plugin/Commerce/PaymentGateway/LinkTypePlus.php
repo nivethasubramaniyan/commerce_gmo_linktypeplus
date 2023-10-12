@@ -165,8 +165,8 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
     $form['cvs'] = array(
       '#type' => 'details',
       '#open' => TRUE,
-      '#title' => t('Convenience Store Options'),
-      '#description' => $this->t('<b>Convenience Store informations are taken only if the cvs payment method selected.</b>'),
+      '#title' => t('Convenience Store Details'),
+      '#description' => $this->t('<b>Convenience Store informations are taken only either cvs or payeasy payment methods are selected.</b>'),
       '#attributes' => [
         'id' => 'cvs_fieldset'
       ],
