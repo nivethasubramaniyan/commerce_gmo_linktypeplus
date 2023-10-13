@@ -140,17 +140,44 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       // page and show the status message.
       $order_id = $responseObj->orderId;
       $linkTypeState = $responseObj->status;
+      $remote_id = $responseObj->remoteId;
+      
+      // print_r($order->getState()->getId());exit;
+
       //remove version from orderId
       $order_id = explode("-", $order_id)[0];
+      $order = Order::load($order_id);
       if ($linkTypeState != 'PAYSUCCESS') {
-        $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
         if ($linkTypeState == 'ERROR') {
+          $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
           $str = "Payment has been failed. Please check the payment details.";
         }
         elseif ($linkTypeState == 'PAYSTART') {
+          $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
           $str = "Please review the payment details. Payment has been cancelled.";
         }
-        else {
+        elseif ($linkTypeState == 'REQSUCCESS') {
+          $this->statusMapper($linkTypeState);
+          $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
+          $paymentGateway = $order->get('payment_gateway')->entity->id();
+          $total_price = $order->getTotalprice()->getNumber();
+          $currency = $order->getTotalprice()->getCurrencyCode();
+          $payment = $payment_storage->create([
+            'state' => $this->defaultPaymentStatus,
+            'payment_gateway' => $paymentGateway,
+            'remote_id' => $remote_id,
+            'amount' => [
+              'number' => $total_price,
+              'currency_code' => $currency,
+            ],
+            'order_id' => $order_id,
+            'completed' => time(),
+          ]);
+          $payment->save();
+          $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
+          $str = 'Order Place Request recieved successfully. Your order will be 
+          updated soon.';
+        }else{
           $str = "Please review the payment details.";
         }
         $this->messenger()->addWarning($str);
@@ -284,6 +311,12 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     try {
       $data = $request->request->all();
       $this->loggerFactory->notice("in response saver");
+      $file=fopen("sites/default/files/webhook.txt","a+");
+      $con = file_get_contents("webhook.txt");
+      echo fwrite($file,"=======".date("d-m-Y h:i:s")."========\n");
+      echo fwrite($file,  serialize($data)."\n");
+      echo fwrite($file,"=======================================\n");
+      fclose($file);
       if ($this->updateEventSubscriber($data)) {
         return new JsonResponse(0);
       }
