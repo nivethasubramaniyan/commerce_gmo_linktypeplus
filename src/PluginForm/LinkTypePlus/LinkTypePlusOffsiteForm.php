@@ -60,6 +60,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $shop_name = $configuration['shop_name'];
     $notify_mailaddress = $configuration['notify_mailaddress'];
     $confirmkipflag = $configuration['confirmkipflag'];
+    $thanksmailsendflag = $configuration['thanksmailsendflag'];
     $transdetailflag = $configuration['transdetailflag'];
     $language = $configuration['language'];
     $resultskipflag = $configuration['resultskipflag'];
@@ -112,6 +113,7 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
         'shop_name' => $shop_name,
         'notify_mailaddress' => $notify_mailaddress,
         'confirmkipflag' => $confirmkipflag,
+        'thanksmailsendflag' => $thanksmailsendflag,
         'transdetailflag' => $transdetailflag,
         'language' => $language,
         'contact_information' => $contact_information,
@@ -151,17 +153,15 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
    * @throws \ClientException
    */
   public function getRedirectUrl($order, array $configPayload) {
-    // $orderId = $order->id() . $order->getVersion();
+    $orderId = $order->id() .'-'. $order->getVersion();
     $amount = round((string) $order->getBalance()->getNumber());
     $callBackUrlObj = Url::fromUri('route:commerce_gmo_linktypeplus.complete_response');
     $callBackUrlObj->setAbsolute();
     $callBackUrl = $callBackUrlObj->toString();
 
-    $this->credentials = [...$this->credentials, 'TemplateNo' => $configPayload['template_no']];
-
     $payload['configid'] = $order->id();
     $payload['transaction'] = [
-      'OrderID' => $order->id(),
+      'OrderID' => $orderId,
       'Amount'  => $amount,
       'Overview' => 'SampleOverview',
       'CompleteUrl' => $callBackUrl,
@@ -189,19 +189,37 @@ class LinkTypePlusOffsiteForm extends BasePaymentOffsiteForm {
     $customerEmail = $user->get('mail')->value;
 
     if(isset($customerName) && isset($customerEmail)){
+      // The following setting is for the display name and email 
+      // on the convenience store payment method.
       $payload['customer'] = [
         "CustomerName" => $customerName,
         "MailAddress" => $customerEmail
       ];
     }
 
+    $this->credentials = [...$this->credentials, 
+      "TemplateNo" => $configPayload['template_no'],
+      "ThanksMailSendFlag" => $configPayload['thanksmailsendflag'],
+      // The following setting is for sending the thank you email 
+      // after the payment has been completed.
+      "CustomerName" => $customerName,
+      "SendMailAddress" => $customerEmail
+    ];
+
     $payload['geturlparam'] = $this->credentials;
 
     if(in_array('cvs',$configPayload['pay_methods'])){
       $payload['cvs'] = [
-        "ReceiptsDisp11" => $configPayload['contact_information'],
-        "ReceiptsDisp12" => $configPayload['contact_number'],
-        "ReceiptsDisp13" => $configPayload['contact_reception_hours']
+        "ReceiptsDisp11" => $configPayload['contact_information'] ?? '',
+        "ReceiptsDisp12" => $configPayload['contact_number'] ?? '',
+        "ReceiptsDisp13" => $configPayload['contact_reception_hours'] ?? ''
+      ];
+    }
+    if(in_array('payeasy',$configPayload['pay_methods'])){
+      $payload['payeasy'] = [
+        "ReceiptsDisp11" => $configPayload['contact_information'] ?? '',
+        "ReceiptsDisp12" => $configPayload['contact_number'] ?? '',
+        "ReceiptsDisp13" => $configPayload['contact_reception_hours'] ?? ''
       ];
     }
 

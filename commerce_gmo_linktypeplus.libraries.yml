@@ -1,0 +1,6 @@
+cvs:
+  version: 1.x
+  js:
+    js/cvs.js: {}
+  dependencies:
+    - core/jquery  
