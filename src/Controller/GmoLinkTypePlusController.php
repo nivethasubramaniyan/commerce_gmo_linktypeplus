@@ -142,11 +142,14 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $linkTypeState = $responseObj->status;
       $remote_id = $responseObj->remoteId;
       
-      // print_r($order->getState()->getId());exit;
-
       //remove version from orderId
       $order_id = explode("-", $order_id)[0];
       $order = Order::load($order_id);
+
+      // Handles the payment flow and drupal status updated
+      // based on custom status recieved from GMO. This session 
+      // Can be more generalized. Currently we are considering only 
+      // credit, cvs, payeasy, paypay payment method's statuses
       if ($linkTypeState != 'PAYSUCCESS') {
         if ($linkTypeState == 'ERROR') {
           $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
@@ -156,7 +159,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
           $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
           $str = "Please review the payment details. Payment has been cancelled.";
         }
-        elseif ($linkTypeState == 'REQSUCCESS') {
+        elseif ($linkTypeState == 'REQSUCCESS' && ($responseObj->paymentMethod == 'cvs' || $responseObj->paymentMethod == 'payeasy')) {
           $this->statusMapper($linkTypeState);
           $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
           $paymentGateway = $order->get('payment_gateway')->entity->id();
@@ -174,9 +177,18 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
             'completed' => time(),
           ]);
           $payment->save();
+          //Save the order in pending state for cvs and payeasy
+          $order->unlock();
+          $order->setData($paymentGateway, $data);
+          if ($order->getState()->getId() != 'completed') {
+            $order->getState()->applyTransitionById('place');
+          }
+          $order->save();
+
           $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
           $str = 'Order Place Request recieved successfully. Your order will be 
           updated soon.';
+          //End custom status handles
         }else{
           $str = "Please review the payment details.";
         }
@@ -248,7 +260,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         $order->unlock();
         $order->setData($paymentGateway, $data);
         if ($order->getState()->getId() != 'completed') {
-          $order->getState()->applyTransitionById('place');
+          $order->getState()->applyTransitionById('fulfill');
         }
         $order->save();
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
