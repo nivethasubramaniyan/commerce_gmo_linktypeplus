@@ -49,11 +49,19 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public $defaultPaymentStatus = 'new';
 
   /**
-   * Var used to track the payment status .
+   * True or false value to check payment is success in GMO.
    *
-   * @var defaultPaymentStatus
+   * @var paymentSuccess
    */
   public $paymentSuccess = FALSE;
+
+  /**
+   * True or false value to check whether payment need to
+   * create in Drupal.
+   *
+   * @var isOrderCreationNeeded
+   */
+  public $isOrderCreationNeeded = FALSE;
 
   /**
    * Logger Factory.
@@ -185,14 +193,16 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       //statusMapper will return the status of payment 
       //along with were the page needed to be redirected
       [ $statusMapperRedirect, $statusMapperStr ] = $this->statusMapper($linkTypeState, $order_id);
-      if ($payment) {
+      // Already payment is created
+      if ($payment && $this->paymentSuccess && $this->isOrderCreationNeeded) {
         $payment = array_shift($payment);
         $payment->setState($this->defaultPaymentStatus);
         $payment->setRemoteId($remote_id);
         $payment->setCompletedTime(\Drupal::time()->getRequestTime());
         $payment->save();
       }
-      else {
+      elseif($this->isOrderCreationNeeded) {
+        // Creating new payment that is not exist
         $payment = $payment_storage->create([
           'state' => $this->defaultPaymentStatus,
           'payment_gateway' => $paymentGateway,
@@ -206,23 +216,29 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         ]);
         $payment->save();
       }
-      if ($this->paymentSuccess) {
+      if ($this->paymentSuccess && $this->isOrderCreationNeeded) {
         $order->unlock();
         $order->setData($paymentGateway, $data);
         if ($order->getState()->getId() != 'completed') {
           $order->getState()->applyTransitionById('fulfill');
         }
+        $order->setPlacedTime(\Drupal::time()->getCurrentTime());
+        $order->setOrderNumber($order_id);
+        $order->set('cart', 0);
         $order->save();
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
         $this->messenger()->addStatus('Order placed successfully');
         return $redirect;
-      }else{
+      }elseif($this->isOrderCreationNeeded){
         $order->unlock();
         $order->setData($paymentGateway, $data);
         if ($order->getState()->getId() != 'completed') {
           $order->getState()->applyTransitionById('place');
         }
         $order->save();
+        $this->messenger()->addWarning($statusMapperStr);
+        return $statusMapperRedirect;
+      }else{
         $this->messenger()->addWarning($statusMapperStr);
         return $statusMapperRedirect;
       }
@@ -258,6 +274,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         $str = 'Order Place Request recieved successfully. Your order will be 
         updated soon.';
         $this->paymentSuccess = FALSE;
+        $this->isOrderCreationNeeded = TRUE;
         return [$redirect, $str];
         break;
 
@@ -266,6 +283,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
         $str = "Please review the payment details. Payment has been cancelled.";
         $this->paymentSuccess = FALSE;
+        $this->isOrderCreationNeeded = FALSE;
         return [$redirect, $str];
         break;
 
@@ -274,19 +292,21 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         $str = "Payment has been failed. Please check the payment details.";
         $this->defaultPaymentStatus = 'failed';
         $this->paymentSuccess = FALSE;
+        $this->isOrderCreationNeeded = FALSE;
         return [$redirect, $str];
         break;
 
       case 'PAYSUCCESS':
         $this->defaultPaymentStatus = 'completed';
         $this->paymentSuccess = TRUE;
+        $this->isOrderCreationNeeded = TRUE;
         break;
 
       case 'EXPIRED':
       case 'INVALID':
 
       default:
-        $this->defaultPaymentStatus = 'new';
+      $this->defaultPaymentStatus = 'new';
     }
   }
 
