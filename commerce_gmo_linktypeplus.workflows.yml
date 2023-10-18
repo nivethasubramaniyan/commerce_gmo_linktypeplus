@@ -18,7 +18,7 @@ order_linktypeplus_validation:
       to: pending
     fulfill:
       label: 'Fulfill order'
-      from: [pending]
+      from: [draft, pending]
       to: completed
     cancel:
       label: 'Cancel order'
