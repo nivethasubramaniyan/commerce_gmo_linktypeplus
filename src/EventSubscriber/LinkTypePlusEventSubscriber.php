@@ -47,6 +47,8 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
     return [
       'Credit' => 'onlinkTypeCreditCardPaymentEvent',
       'PayPay' => 'onlinkTypePayPayEvent',
+      'CVS' => 'onlinkTypePayPayEvent',
+      'PayEasy' => 'onlinkTypePayPayEvent',
     ];
   }
 
