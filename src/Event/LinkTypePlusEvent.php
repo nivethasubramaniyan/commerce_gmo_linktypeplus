@@ -16,7 +16,7 @@ class LinkTypePlusEvent extends Event {
   /**
    * Order Id.
    *
-   * @var orderId
+   * @var string orderId
    */
 
 
