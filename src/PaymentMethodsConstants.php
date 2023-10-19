@@ -7,6 +7,8 @@ namespace Drupal\commerce_gmo_linktypeplus;
  */
 class PaymentMethodsConstants {
   const CREDIT = 0;
+  const CVS = 3;
+  const PAYEASY = 4;
   const DOCOMOPAY = 9;
   const SOFTBANK = 11;
   const BANK_TRANSFER = 36;

@@ -49,6 +49,21 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public $defaultPaymentStatus = 'new';
 
   /**
+   * True or false value to check payment is success in GMO.
+   *
+   * @var paymentSuccess
+   */
+  public $paymentSuccess = FALSE;
+
+  /**
+   * True or false value to check whether payment need to
+   * create in Drupal.
+   *
+   * @var isOrderCreationNeeded
+   */
+  public $isOrderCreationNeeded = FALSE;
+
+  /**
    * Logger Factory.
    *
    * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
@@ -136,63 +151,17 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $this->loggerFactory->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
       $responseObj = new ResponseData($data);
 
-      // If the order is failure or cancelled, then redirect to review
-      // page and show the status message.
-      $order_id = $responseObj->orderId;
-      $linkTypeState = $responseObj->status;
-      $remote_id = $responseObj->remoteId;
-      
-      // print_r($order->getState()->getId());exit;
-
+      $order_id = $responseObj->orderId;  
       //remove version from orderId
-      $order_id = explode("-", $order_id)[0];
-      $order = Order::load($order_id);
-      if ($linkTypeState != 'PAYSUCCESS') {
-        if ($linkTypeState == 'ERROR') {
-          $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
-          $str = "Payment has been failed. Please check the payment details.";
-        }
-        elseif ($linkTypeState == 'PAYSTART') {
-          $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
-          $str = "Please review the payment details. Payment has been cancelled.";
-        }
-        elseif ($linkTypeState == 'REQSUCCESS') {
-          $this->statusMapper($linkTypeState);
-          $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
-          $paymentGateway = $order->get('payment_gateway')->entity->id();
-          $total_price = $order->getTotalprice()->getNumber();
-          $currency = $order->getTotalprice()->getCurrencyCode();
-          $payment = $payment_storage->create([
-            'state' => $this->defaultPaymentStatus,
-            'payment_gateway' => $paymentGateway,
-            'remote_id' => $remote_id,
-            'amount' => [
-              'number' => $total_price,
-              'currency_code' => $currency,
-            ],
-            'order_id' => $order_id,
-            'completed' => time(),
-          ]);
-          $payment->save();
-          $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
-          $str = 'Order Place Request recieved successfully. Your order will be 
-          updated soon.';
-        }else{
-          $str = "Please review the payment details.";
-        }
-        $this->messenger()->addWarning($str);
-        return $redirect;
-      }else{
-        $response = $this->updateLinkTypePaymentStatus(
-          $responseObj->orderId,
-          $responseObj->paymentMethod,
-          $responseObj->status,
-          $responseObj->remoteId,
-          $data,
-          TRUE
-        );
-        return $response;
-      }
+      $orderStripId = explode("-", $order_id)[0];
+      $response = $this->updateLinkTypePaymentStatus(
+        $orderStripId,
+        $responseObj->paymentMethod,
+        $responseObj->status,
+        $responseObj->remoteId,
+        $data
+      );
+      return $response;
     }
     catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
@@ -211,7 +180,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   /**
    * Updating the payment status.
    */
-  public function updateLinkTypePaymentStatus($order_id, $payment_method, $linkTypeState, $remote_id, $data, $success_page = FALSE) {
+  public function updateLinkTypePaymentStatus($order_id, $payment_method, $linkTypeState, $remote_id, $data) {
     try {
       $order = Order::load($order_id);
       $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
@@ -221,18 +190,21 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
       $payment = $payment_storage->loadByProperties([
         'order_id' => $order_id,
       ]);
-      $this->statusMapper($linkTypeState);
-      if ($payment) {
+      //statusMapper will return the status of payment 
+      //along with were the page needed to be redirected
+      [ $statusMapperRedirect, $statusMapperStr ] = $this->statusMapper($linkTypeState, $order_id);
+      // Already payment is created
+      if ($payment && $this->paymentSuccess && $this->isOrderCreationNeeded) {
         $payment = array_shift($payment);
         $payment->setState($this->defaultPaymentStatus);
         $payment->setRemoteId($remote_id);
         $payment->setCompletedTime(\Drupal::time()->getRequestTime());
         $payment->save();
       }
-      else {
+      elseif($this->isOrderCreationNeeded) {
+        // Creating new payment that is not exist
         $payment = $payment_storage->create([
           'state' => $this->defaultPaymentStatus,
-          // Should be made configurable.
           'payment_gateway' => $paymentGateway,
           'remote_id' => $remote_id,
           'amount' => [
@@ -244,16 +216,31 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         ]);
         $payment->save();
       }
-      if ($success_page) {
+      if ($this->paymentSuccess && $this->isOrderCreationNeeded) {
+        $order->unlock();
+        $order->setData($paymentGateway, $data);
+        if ($order->getState()->getId() != 'completed') {
+          $order->getState()->applyTransitionById('fulfill');
+        }
+        $order->setPlacedTime(\Drupal::time()->getCurrentTime());
+        $order->setOrderNumber($order_id);
+        $order->set('cart', 0);
+        $order->save();
+        $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
+        $this->messenger()->addStatus('Order placed successfully');
+        return $redirect;
+      }elseif($this->isOrderCreationNeeded){
         $order->unlock();
         $order->setData($paymentGateway, $data);
         if ($order->getState()->getId() != 'completed') {
           $order->getState()->applyTransitionById('place');
         }
         $order->save();
-        $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
-        $this->messenger()->addStatus('Order placed successfully');
-        return $redirect;
+        $this->messenger()->addWarning($statusMapperStr);
+        return $statusMapperRedirect;
+      }else{
+        $this->messenger()->addWarning($statusMapperStr);
+        return $statusMapperRedirect;
       }
     }
     catch (\Exception $e) {
@@ -274,33 +261,52 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    *
    * Refer : https://docs.mul-pay.jp/linkplus/payment/common.
    */
-  public function statusMapper($state) {
+  public function statusMapper($state, $order_id) {
+    // Handles the payment flow and drupal status updated
+    // based on custom status recieved from GMO. This session 
+    // Can be more generalized. Currently we are considering only 
+    // credit, cvs, payeasy, paypay payment method's statuses
     switch ($state) {
       case 'REQPROCESS':
       case 'REQSUCCESS':
         $this->defaultPaymentStatus = 'authorization';
+        $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
+        $str = 'Order Place Request recieved successfully. Your order will be 
+        updated soon.';
+        $this->paymentSuccess = FALSE;
+        $this->isOrderCreationNeeded = TRUE;
+        return [$redirect, $str];
         break;
 
       case 'PAYSTART':
         $this->defaultPaymentStatus = 'new';
+        $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
+        $str = "Please review the payment details. Payment has been cancelled.";
+        $this->paymentSuccess = FALSE;
+        $this->isOrderCreationNeeded = FALSE;
+        return [$redirect, $str];
         break;
 
       case 'ERROR':
+        $redirect = new RedirectResponse('/checkout/' . $order_id . '/review');
+        $str = "Payment has been failed. Please check the payment details.";
         $this->defaultPaymentStatus = 'failed';
+        $this->paymentSuccess = FALSE;
+        $this->isOrderCreationNeeded = FALSE;
+        return [$redirect, $str];
         break;
 
       case 'PAYSUCCESS':
         $this->defaultPaymentStatus = 'completed';
+        $this->paymentSuccess = TRUE;
+        $this->isOrderCreationNeeded = TRUE;
         break;
 
       case 'EXPIRED':
       case 'INVALID':
-      case 'ERROR':
-        $this->defaultPaymentStatus = 'authorization_expired';
-        break;
 
       default:
-        $this->defaultPaymentStatus = 'new';
+      $this->defaultPaymentStatus = 'new';
     }
   }
 

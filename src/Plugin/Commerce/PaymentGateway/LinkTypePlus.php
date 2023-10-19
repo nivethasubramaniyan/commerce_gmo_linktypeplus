@@ -47,13 +47,13 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
         'post' => $this->t('Redirect via POST (automatic)'),
         'post_manual' => $this->t('Redirect via POST (manual)'),
       ],
-      '#default_value' => $this->configuration['redirect_method'],
+      '#default_value' => $this->configuration['redirect_method'] ?? '',
     ];
 
     $form['host'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Host'),
-      '#default_value' => $this->configuration['host'],
+      '#default_value' => $this->configuration['host'] ?? '',
       '#required' => TRUE,
       '#description' => $this->t('Enter linktype plus sandbox host URL'),
     ];
@@ -61,28 +61,28 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
     $form['shop_id'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Shop ID'),
-      '#default_value' => $this->configuration['shop_id'],
+      '#default_value' => $this->configuration['shop_id'] ?? '',
       '#required' => TRUE,
     ];
 
     $form['shop_pass'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Shop password'),
-      '#default_value' => $this->configuration['shop_pass'],
+      '#default_value' => $this->configuration['shop_pass'] ?? '',
       '#required' => TRUE,
     ];
 
     $form['shop_name'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Shop Name'),
-      '#default_value' => $this->configuration['shop_name'],
+      '#default_value' => $this->configuration['shop_name'] ?? '',
       '#required' => TRUE,
     ];
 
     $form['notify_mailaddress'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Notify Mail address'),
-      '#default_value' => $this->configuration['notify_mailaddress'],
+      '#default_value' => $this->configuration['notify_mailaddress'] ?? '',
       '#description' => $this->t('<b>This is the email address to which the payment completion notification email will be sent to the Merchant when the payment is completed.
       If omitted, the payment completion notification 
       email will not be sent.</b>'),
@@ -92,7 +92,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#type' => 'radios',
       '#title' => $this->t('Should Skip The Result?'),
       '#options' => ["1" => $this->t('Yes'), "0" => $this->t('No')],
-      '#default_value' => $this->configuration['resultskipflag'],
+      '#default_value' => $this->configuration['resultskipflag']?? '',
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, skip the result screen and 
       transition to the return destination at the time of completion.</b>'),
@@ -102,7 +102,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#type' => 'radios',
       '#title' => $this->t('Should Skip The Confirmation Screen?'),
       '#options' => ["1" => $this->t('Yes'), "0" => $this->t('No')],
-      '#default_value' => $this->configuration['confirmkipflag'],
+      '#default_value' => $this->configuration['confirmkipflag'] ?? '',
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, the confirmation screen will be skipped and the 
       screen will transition to the next screen.</b>'),
@@ -112,7 +112,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#type' => 'radios',
       '#title' => $this->t('Send Thank you email?'),
       '#options' => ["1" => $this->t('Yes'), "0" => $this->t('No')],
-      '#default_value' => $this->configuration['thanksmailsendflag'],
+      '#default_value' => $this->configuration['thanksmailsendflag'] ?? '',
       '#required' => TRUE,
       '#description' => $this->t('<b>Set whether to send a registration completion email to the customer.
       If not set, no email will be sent.
@@ -124,7 +124,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
       '#type' => 'radios',
       '#title' => $this->t('Show transaction details?'),
       '#options' => ["1" => $this->t('Yes'), "0" => $this->t('No')],
-      '#default_value' => $this->configuration['transdetailflag'],
+      '#default_value' => $this->configuration['transdetailflag'] ?? '',
       '#required' => TRUE,
       '#description' => $this->t('<b>When set to ON, the initial display will be the expanded 
       transaction details on the payment screen..</b>'),
@@ -153,7 +153,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
         'ganb' => $this->t('Bank transfer (virtual account Aozora)'),
         'unionpay' => $this->t('Net Union Pay'),
       ],
-      '#default_value' => $this->configuration['payment_methods'],
+      '#default_value' => $this->configuration['payment_methods'] ?? '',
       '#multiple' => TRUE,
       '#required' => TRUE,
       '#attributes' => [
@@ -201,7 +201,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
         '4' => $this->t('4'),
         '5' => $this->t('5'),
       ],
-      '#default_value' => $this->configuration['template_no'],
+      '#default_value' => $this->configuration['template_no'] ?? '',
       '#description' => $this->t('Specify the number of the template file uploaded on the management screen. 
       Required if any of the card editing URL guidance email sending flag, registration completion email sending flag, or card editing URL guidance SMS sending flag is set to "1".'),
       '#multiple' => FALSE,
@@ -217,7 +217,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
         'designC' => $this->t('designC'),
         'designD' => $this->t('designD'),
       ],
-      '#default_value' => $this->configuration['template_id'],
+      '#default_value' => $this->configuration['template_id'] ?? '',
       '#description' => $this->t('Please enter the template design that
         will display on payment screen. please refer: <a href="https://docs.mul-pay.jp/linkplus/payment/common">https://docs.mul-pay.jp/linkplus/payment/common</a> for more'),
       '#multiple' => FALSE,
@@ -237,7 +237,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
         'nature_01' => $this->t('nature_01'),
         'greengray_01' => $this->t('greengray_01'),
       ],
-      '#default_value' => $this->configuration['color_pattern'],
+      '#default_value' => $this->configuration['color_pattern'] ?? '',
       '#description' => $this->t('Please enter the color pattern that
         will display on payment screen. please refer: <a href="https://docs.mul-pay.jp/linkplus/payment/common">https://docs.mul-pay.jp/linkplus/payment/common</a> for more'),
       '#multiple' => FALSE,
@@ -252,7 +252,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
         'en' => $this->t('English'),
         'zh' => $this->t('Simplified Chinese'),
       ],
-      '#default_value' => $this->configuration['language'],
+      '#default_value' => $this->configuration['language'] ?? '',
       '#description' => $this->t('The language (ISO639 code) to be displayed on the payment screen.'),
       '#multiple' => FALSE,
       '#required' => TRUE,
@@ -261,7 +261,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
     $form['cancel_url'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Cancel URL'),
-      '#default_value' => $this->configuration['cancel_url'],
+      '#default_value' => $this->configuration['cancel_url'] ?? '',
       '#required' => TRUE,
       '#description' => $this->t('Cancellation URL that will callback 
       when the user cancels the payment'),
@@ -270,7 +270,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
     $form['return_url'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Return URL'),
-      '#default_value' => $this->configuration['return_url'],
+      '#default_value' => $this->configuration['return_url'] ?? '',
       '#required' => TRUE,
       '#description' => $this->t('Link type This is the destination URL when pressing 
         the "Return to site" button'),
@@ -279,7 +279,7 @@ class LinkTypePlus extends OffsitePaymentGatewayBase {
     $form['logo_url'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Logo URL'),
-      '#default_value' => $this->configuration['logo_url'],
+      '#default_value' => $this->configuration['logo_url'] ?? '',
       '#required' => TRUE,
       '#description' => $this->t('URL of the logo that will display on payment screen'),
     ];

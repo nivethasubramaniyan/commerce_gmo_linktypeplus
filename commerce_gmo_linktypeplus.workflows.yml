@@ -1,27 +1,26 @@
-order_fulfillment:
-  id: order_fulfillment
-  group: commerce_payment
-  type: order
-  label: 'Order Fulfillment'
+order_linktypeplus_validation:
+  id: order_linktypeplus_validation
+  group: commerce_order
+  label: 'linktypeplus order workflow'
   states:
     draft:
-      label: 'Draft'
-    fulfillment:
-      label: 'Fulfillment'
+      label: Draft
+    pending:
+      label: Pending
     completed:
-      label: 'Completed'
+      label: Completed
     canceled:
-      label: 'Canceled'
+      label: Canceled
   transitions:
     place:
       label: 'Place order'
       from: [draft]
-      to: fulfillment
+      to: pending
     fulfill:
       label: 'Fulfill order'
-      from: [fulfillment]
+      from: [draft, pending]
       to: completed
     cancel:
       label: 'Cancel order'
-      from: [draft, fulfillment]
+      from: [draft, pending]
       to: canceled

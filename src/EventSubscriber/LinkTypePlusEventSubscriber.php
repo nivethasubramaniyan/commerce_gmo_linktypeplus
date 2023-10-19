@@ -45,50 +45,35 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
    */
   public static function getSubscribedEvents() {
     return [
-      'Credit' => 'onlinkTypeCreditCardPaymentEvent',
-      'PayPay' => 'onlinkTypePayPayEvent',
+      'Credit' => 'onlinkTypePaymentEvent',
+      'PayPay' => 'onlinkTypePaymentEvent',
+      'CVS' => 'onlinkTypePaymentEvent',
+      'PayEasy' => 'onlinkTypePaymentEvent',
     ];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function onlinkTypeCreditCardPaymentEvent(LinkTypePlusEvent $event) {
+  public function onlinkTypePaymentEvent(LinkTypePlusEvent $event) {
     $paymentMethod = $event->getPaymentMethod();
     // Get the payment status and update the payment in Drupal.
     $orderId = $event->getOrderId();
+     //remove version from orderId
+    $orderStripId = explode("-", $orderId)[0];
     $status = $event->getTransitionState();
     $drupalStatus = $this->webhookStatusMapper($status);
     $remoteId = $event->getRemoteId();
     $this->loggerFactory->notice("$paymentMethod payment event has been subscribed");
-    $this->loggerFactory->notice("$orderId \n  $status \n $remoteId");
-    if (!empty($orderId) && !empty($drupalStatus) && !empty($remoteId)) {
-      if ($this->updatePaymentStatus($orderId, $drupalStatus, $remoteId)) {
+    $this->loggerFactory->notice("$orderStripId \n  $status \n $remoteId");
+    if (!empty($orderStripId) && !empty($drupalStatus) && !empty($remoteId)) {
+      if ($this->updatePaymentStatus($orderStripId, $drupalStatus, $remoteId)) {
         $this->loggerFactory->notice('Status has been updated');
         return TRUE;
       }
     }
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function onlinkTypePayPayEvent(LinkTypePlusEvent $event) {
-    $paymentMethod = $event->getPaymentMethod();
-    // Get the payment status and update the payment in Drupal.
-    $orderId = $event->getOrderId();
-    $status = $event->getTransitionState();
-    $drupalStatus = $this->webhookStatusMapper($status);
-    $remoteId = $event->getRemoteId();
-    $this->loggerFactory->notice("$paymentMethod payment event has been subscribed");
-    $this->loggerFactory->notice("$orderId \n  $status \n $remoteId");
-    if (!empty($orderId) && !empty($drupalStatus) && !empty($remoteId)) {
-      if ($this->updatePaymentStatus($orderId, $drupalStatus, $remoteId)) {
-        $this->loggerFactory->notice('Status has been updated');
-        return TRUE;
-      }
-    }
-  }
 
   /**
    * Update the status in Drupal.
@@ -150,6 +135,8 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
         return 'authorization';
         break;
       case 'REQSUCCESS':
+        return 'new';
+        break;
       case 'AUTHPROCESS':
         return 'authorization';
         break;
