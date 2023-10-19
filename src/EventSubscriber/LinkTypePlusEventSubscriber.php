@@ -91,10 +91,12 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
       $payment = $payment_storage->loadByProperties([
         'order_id' => $order_id,
       ]);
+      $this->loggerFactory->notice("webhook mapper status: $status");
       if ($payment) {
         $payment = array_shift($payment);
         $payment->setState($status);
         $payment->setRemoteId($remote_id);
+        $payment->setCompletedTime(\Drupal::time()->getRequestTime());
         $payment->save();
       }
       else {
@@ -107,8 +109,14 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
             'currency_code' => $currency,
           ],
           'order_id' => $order_id,
+          'completed' => time()
         ]);
         $payment->save();
+        //apply the transition
+        $order->unlock();
+        if ($status == 'completed') {
+          $order->getState()->applyTransitionById('fulfill');
+        }
       }
       return TRUE;
     }
