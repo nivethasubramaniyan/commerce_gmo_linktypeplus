@@ -1,0 +1,6 @@
+services:
+  commerce_gmo_linktypeplus.webhook_event_subscriber:
+    class: Drupal\commerce_gmo_linktypeplus\EventSubscriber\LinkTypePlusEventSubscriber
+    tags:
+      - { name: event_subscriber }
+    arguments: ['@entity_type.manager', '@logger.factory']

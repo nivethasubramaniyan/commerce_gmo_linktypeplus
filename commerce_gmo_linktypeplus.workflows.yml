@@ -1,0 +1,26 @@
+order_linktypeplus_validation:
+  id: order_linktypeplus_validation
+  group: commerce_order
+  label: 'linktypeplus order workflow'
+  states:
+    draft:
+      label: Draft
+    pending:
+      label: Pending
+    completed:
+      label: Completed
+    canceled:
+      label: Canceled
+  transitions:
+    place:
+      label: 'Place order'
+      from: [draft]
+      to: pending
+    fulfill:
+      label: 'Fulfill order'
+      from: [draft, pending]
+      to: completed
+    cancel:
+      label: 'Cancel order'
+      from: [draft, pending]
+      to: canceled

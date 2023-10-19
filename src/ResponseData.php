@@ -42,7 +42,15 @@ class ResponseData {
    *
    * @var array
    */
-  public $remoteIdVaries = ['TranID', 'PayPayTrackingID'];
+  public $remoteIdVaries = ['TranID',
+    'PayPayTrackingID',
+    'RakutenChargeID',
+    'DocomoSettlementCode',
+    'SbTrackingId',
+    'AuPayInfoNo',
+    'UriageNO',
+    'EposTradeId',
+  ];
   /**
    * Remote ID .
    *
