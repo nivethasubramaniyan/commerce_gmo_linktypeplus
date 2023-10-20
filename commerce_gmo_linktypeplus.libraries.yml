@@ -1,6 +1,6 @@
 cvs:
   version: 1.x
   js:
-    js/cvs.js: {}
+    js/link_type_plus.js: {}
   dependencies:
     - core/jquery  
