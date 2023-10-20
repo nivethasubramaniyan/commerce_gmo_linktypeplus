@@ -4,3 +4,9 @@ services:
     tags:
       - { name: event_subscriber }
     arguments: ['@entity_type.manager', '@logger.factory']
+
+  commerce_gmo_linktypeplus.order_fulfillment_subscriber:
+        class: Drupal\commerce_gmo_linktypeplus\EventSubscriber\OrderFulfillmentSubscriber
+        arguments: ['@logger.factory']
+        tags:
+          - { name: event_subscriber }

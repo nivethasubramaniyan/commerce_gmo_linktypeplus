@@ -153,7 +153,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
 
       $order_id = $responseObj->orderId;  
       //remove version from orderId
-      $orderStripId = explode("-", $order_id)[0];
+      $orderStripId =$this->getOrderIdStripped($order_id);
       $response = $this->updateLinkTypePaymentStatus(
         $orderStripId,
         $responseObj->paymentMethod,
@@ -165,6 +165,7 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     }
     catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
+      return new JsonResponse(1);
     }
   }
 
@@ -222,10 +223,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
         if ($order->getState()->getId() != 'completed') {
           $order->getState()->applyTransitionById('fulfill');
         }
-        $order->setPlacedTime(\Drupal::time()->getCurrentTime());
-        $order->setOrderNumber($order_id);
-        $order->set('cart', 0);
-        $order->save();
         $redirect = new RedirectResponse('/checkout/' . $order_id . '/complete');
         $this->messenger()->addStatus('Order placed successfully');
         return $redirect;
@@ -316,7 +313,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
   public function responseSaver(Request $request) {
     try {
       $data = $request->request->all();
-      $this->loggerFactory->notice("in response saver");
       $file=fopen("sites/default/files/webhook.txt","a+");
       $con = file_get_contents("webhook.txt");
       echo fwrite($file,"=======".date("d-m-Y h:i:s")."========\n");
@@ -329,8 +325,8 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     }
     catch (\Exception $e) {
       $this->loggerFactory->error($e->getMessage());
+      return new JsonResponse(1);
     }
-    return new JsonResponse(1);
   }
 
   /**
@@ -367,7 +363,6 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
    */
   public function recurringCreditWebhook(Request $request) {
     $data = $request->request->all();
-    \Drupal::logger('recurringCreditWebhook')->notice('<pre><code>' . print_r($data, TRUE) . '</code></pre>');
     $file=fopen("sites/default/files/data.txt","a+");
     $con = file_get_contents("data.txt");
     echo fwrite($file,"=======".date("d-m-Y h:i:s")."========\n");
@@ -375,6 +370,15 @@ class GmoLinkTypePlusController extends ControllerBase implements ContainerInjec
     echo fwrite($file,"=======================================\n");
     fclose($file);
     return new JsonResponse(0);
+  }
+
+  /**
+   * 
+   */
+  public function getOrderIdStripped(string $order_id){
+    if($order_id && is_string($order_id)){
+      return explode("-", $order_id)[0];
+    }
   }
 
 }

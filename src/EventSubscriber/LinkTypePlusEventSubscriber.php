@@ -91,10 +91,12 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
       $payment = $payment_storage->loadByProperties([
         'order_id' => $order_id,
       ]);
+      $this->loggerFactory->notice("webhook mapper status: $status");
       if ($payment) {
         $payment = array_shift($payment);
         $payment->setState($status);
         $payment->setRemoteId($remote_id);
+        $payment->setCompletedTime(\Drupal::time()->getRequestTime());
         $payment->save();
       }
       else {
@@ -107,8 +109,18 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
             'currency_code' => $currency,
           ],
           'order_id' => $order_id,
+          'completed' => time()
         ]);
         $payment->save();
+      }
+      //apply the transition
+      $order->unlock();
+      if ($status == 'completed') {
+        $order->getState()->applyTransitionById('fulfill');
+        $order->setPlacedTime(\Drupal::time()->getCurrentTime());
+        $order->setOrderNumber($order_id);
+        $order->set('cart', 0);
+        $order->save();
       }
       return TRUE;
     }
@@ -120,13 +132,11 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
    * We got these status through webhook.
    *
    * It may differs for credit card, paypay etc.
-   * Please add the required status by refering the doc
+   * TODO: Please add the required status by refering the doc
    *
    * Refer: https://docs.mul-pay.jp/payment/credit/notice
    *        https://docs.mul-pay.jp/paypay/payg-notice
    *        https://docs.mul-pay.jp/
-   *
-   * THIS SECTION NEEDS TO BE EXTENDED.
    */
   public function webhookStatusMapper($state) {
     switch ($state) {
@@ -157,6 +167,9 @@ class LinkTypePlusEventSubscriber implements EventSubscriberInterface {
       case 'AUTHENTICATED':
       case 'CAPTURE':
         return 'new';
+        break;
+      case 'CANCEL':
+        return 'canceled';
         break;
       case 'PAYFAIL':
         return 'authorization_expired';

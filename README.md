@@ -2,7 +2,7 @@
 
 Commerce GMO linktypeplus is a module that will make use of the linktype plus payment in the drupal commerce.
 
-For a more details and documentation, please visit https://docs.mul-pay.jp/linkplus/overview.
+For a more details and documentation, please visit https://docs.mul-pay.jp/linkplus/overview
 
 
 
@@ -26,6 +26,10 @@ information, see
 ## Configuration
 
 Configure the Linktypeplus payment gateway at (/admin/commerce/config/payment-gateways).
+
+We created a custom payment workflow for this module. To select the workflow, go to: /admin/commerce/config/order-types and select the `linktypeplus order workflow`
+
+![Alt text](image.png)
 
 ## Maintainers
 
